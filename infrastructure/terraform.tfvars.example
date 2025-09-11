@@ -1,0 +1,33 @@
+# Terraform 变量示例文件
+# 复制此文件为 terraform.tfvars 并填入实际配置
+
+# 基本配置
+project_name = "oh-i-have-that"
+environment  = "prod"  # 或 "test"
+region       = "ap-guangzhou"
+
+# 应用配置
+app_names = ["website-api", "user-service", "notification-service"]
+
+# SCF 配置
+scf_function_name = "website-handler"
+scf_memory_size   = 128  # 测试环境可以使用 64
+scf_timeout       = 30   # 测试环境可以使用 15
+
+# COS 配置
+cos_bucket_name     = ""  # 留空自动生成
+enable_auto_upload  = true
+static_files_path   = "../static-website/dist"
+
+# 标签配置
+common_tags = {
+  Project     = "oh-i-have-that"
+  Environment = "prod"  # 或 "test"
+  ManagedBy   = "terraform"
+  Owner       = "your-name"
+}
+
+# 注意：
+# 1. 不要在此文件中包含敏感信息
+# 2. 敏感信息应通过环境变量提供
+# 3. 此文件可以安全地提交到代码仓库

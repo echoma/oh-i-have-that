@@ -1,0 +1,4 @@
+github.com/gin-gonic/gin v1.9.1 h1:4idEAncQnU5cB7BeOkPtxjfCSye0AAm1R0RVIqJ+Jmg=
+github.com/gin-gonic/gin v1.9.1/go.mod h1:hPrL7YrpYKXt5YId3A/Tnip5kqbEAP+KLuI3SUcPTeU=
+github.com/tencentyun/scf-go-lib v0.0.0-20211123032342-f972dcd16ff6 h1:+ZxhTpfpZlmchB58ih/LBHX52ky7w2VhQVKQMucy3Ic=
+github.com/tencentyun/scf-go-lib v0.0.0-20211123032342-f972dcd16ff6/go.mod h1:kMJbg3SlWZCKNXe5wYCBZQfhGOZdT1UGObQZGXNuIng=

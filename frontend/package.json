@@ -1,0 +1,27 @@
+{
+  "name": "oh-i-have-that-static",
+  "version": "1.0.0",
+  "description": "Oh I Have That 静态资源",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js",
+    "build:prod": "NODE_ENV=production node build.js",
+    "dev": "npm run build && npm run serve",
+    "serve": "npx http-server dist -p 8080 -c-1",
+    "clean": "rm -rf dist",
+    "watch": "nodemon --watch src --exec \"npm run build\"",
+    "deploy": "npm run build:prod && echo '构建完成，可以部署到COS'"
+  },
+  "keywords": [
+    "static-website",
+    "scf",
+    "cos",
+    "tencent-cloud"
+  ],
+  "author": "Oh I Have That Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "nodemon": "^3.0.1"
+  }
+}

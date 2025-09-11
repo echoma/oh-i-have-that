@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oh I Have That</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🚀 Oh I Have That</h1>
+            <p class="subtitle">基于腾讯云SCF和COS构建的现代化Serverless网站</p>
+        </header>
+
+        <main class="main-content">
+            <section class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>COS存储</h3>
+                    <p>静态资源由腾讯云对象存储提供，高可用、低成本</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>SCF云函数</h3>
+                    <p>动态逻辑由Serverless云函数处理，按需付费</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>Terraform</h3>
+                    <p>基础设施即代码，自动化部署和管理</p>
+                </div>
+            </section>
+
+            <section class="api-demo">
+                <h2>API 演示</h2>
+                <div class="api-buttons">
+                    <button class="btn btn-primary" onclick="testHealthCheck()">健康检查</button>
+                    <button class="btn btn-secondary" onclick="testUserInfo()">用户信息</button>
+                    <button class="btn btn-accent" onclick="testStats()">系统统计</button>
+                </div>
+                <div id="api-result" class="api-result"></div>
+            </section>
+
+            <section class="architecture">
+                <h2>架构图</h2>
+                <div class="arch-diagram">
+                    <div class="arch-flow">
+                        <div class="arch-step">
+                            <div class="arch-icon">👤</div>
+                            <span>用户请求</span>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-step">
+                            <div class="arch-icon">🌐</div>
+                            <span>COS静态托管</span>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-step">
+                            <div class="arch-icon">🚪</div>
+                            <span>API网关</span>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-step">
+                            <div class="arch-icon">⚡</div>
+                            <span>SCF云函数</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2024 Oh I Have That. Powered by Tencent Cloud.</p>
+            <div class="footer-links">
+                <a href="https://github.com/your-repo" target="_blank">GitHub</a>
+                <a href="https://cloud.tencent.com/document/product/583" target="_blank">SCF文档</a>
+                <a href="https://cloud.tencent.com/document/product/436" target="_blank">COS文档</a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
