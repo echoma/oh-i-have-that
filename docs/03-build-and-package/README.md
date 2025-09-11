@@ -15,7 +15,89 @@
 - 基础设施部署成功
 - 容器注册表可用
 
-## 🎨 前端应用构建
+## 🚀 自动化构建（推荐）
+
+使用我们提供的自动化脚本来简化构建和打包过程：
+
+```bash
+# 1. 构建前端
+./scripts/03-build-and-package/build-frontend.sh
+
+# 2. 构建后端
+./scripts/03-build-and-package/build-backend.sh
+
+# 3. 构建Docker镜像
+./scripts/03-build-and-package/build-docker-images.sh
+```
+
+### 📋 脚本详细说明
+
+#### 1. build-frontend.sh - 前端构建
+**功能**: 构建前端静态资源
+- 自动检测Node.js环境
+- 安装前端依赖（如需要）
+- 执行前端构建
+- 显示构建统计信息
+- 验证构建结果
+
+**使用方法**:
+```bash
+# 基本构建
+./scripts/03-build-and-package/build-frontend.sh
+
+# 构建前会自动安装依赖
+# 支持 dist/ 和 build/ 输出目录
+```
+
+#### 2. build-backend.sh - 后端构建
+**功能**: 编译所有Go后端服务
+- 检测Go环境
+- 批量编译所有后端服务
+- 交叉编译支持（Linux/amd64）
+- 显示编译结果和文件大小
+- 验证可执行文件
+
+**使用方法**:
+```bash
+# 构建所有后端服务
+./scripts/03-build-and-package/build-backend.sh
+
+# 会自动编译：
+# - website-api
+# - user-service  
+# - notification-service
+```
+
+#### 3. build-docker-images.sh - Docker镜像构建
+**功能**: 构建和推送Docker镜像
+- 检测Docker环境
+- 批量构建所有服务镜像
+- 支持镜像标签管理
+- 支持推送到容器注册表
+- 显示镜像大小和构建统计
+
+**使用方法**:
+```bash
+# 基本构建（本地镜像）
+./scripts/03-build-and-package/build-docker-images.sh
+
+# 指定镜像标签
+./scripts/03-build-and-package/build-docker-images.sh --tag=v1.0.0
+
+# 构建并推送到注册表
+./scripts/03-build-and-package/build-docker-images.sh \
+  --registry=ccr.ccs.tencentyun.com/your-namespace \
+  --tag=v1.0.0 \
+  --push
+
+# 不使用缓存构建
+./scripts/03-build-and-package/build-docker-images.sh --no-cache
+
+# 查看帮助
+./scripts/03-build-and-package/build-docker-images.sh --help
+```
+
+## 🎨 手动前端应用构建（备选方案）
 
 ### 1.1 准备前端环境
 

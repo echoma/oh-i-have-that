@@ -15,6 +15,89 @@
 - 腾讯云认证配置正确
 - Terraform已安装并可正常使用
 
+## 🚀 自动化部署（推荐）
+
+使用我们提供的自动化脚本来简化基础设施部署：
+
+```bash
+# 1. 初始化Terraform状态存储
+./scripts/02-infrastructure-setup/init-state-storage.sh
+
+# 2. 管理Terraform工作空间
+./scripts/02-infrastructure-setup/workspace.sh create test
+./scripts/02-infrastructure-setup/workspace.sh create prod
+
+# 3. 部署基础设施
+./scripts/02-infrastructure-setup/deploy-infrastructure.sh test
+```
+
+### 📋 脚本详细说明
+
+#### 1. init-state-storage.sh - 状态存储初始化
+**功能**: 初始化Terraform远程状态存储
+- 创建COS存储桶用于状态管理
+- 配置状态锁定机制
+- 验证状态存储配置
+- 支持多环境状态隔离
+
+**使用方法**:
+```bash
+# 基本初始化
+./scripts/02-infrastructure-setup/init-state-storage.sh
+
+# 指定存储桶名称
+./scripts/02-infrastructure-setup/init-state-storage.sh --bucket-name my-terraform-state
+
+# 指定地域
+./scripts/02-infrastructure-setup/init-state-storage.sh --region ap-beijing
+```
+
+#### 2. workspace.sh - 工作空间管理
+**功能**: 创建和管理Terraform工作空间
+- 创建测试和生产环境工作空间
+- 切换不同环境
+- 列出所有工作空间
+- 验证工作空间状态
+
+**使用方法**:
+```bash
+# 创建工作空间
+./scripts/02-infrastructure-setup/workspace.sh create test
+./scripts/02-infrastructure-setup/workspace.sh create prod
+
+# 切换工作空间
+./scripts/02-infrastructure-setup/workspace.sh select test
+
+# 列出工作空间
+./scripts/02-infrastructure-setup/workspace.sh list
+
+# 查看当前工作空间
+./scripts/02-infrastructure-setup/workspace.sh show
+```
+
+#### 3. deploy-infrastructure.sh - 基础设施部署
+**功能**: 部署腾讯云基础设施
+- 部署网络资源（VPC、子网）
+- 部署存储资源（COS存储桶）
+- 部署计算资源（云函数、API网关）
+- 部署容器注册表
+- 配置安全组和访问策略
+
+**使用方法**:
+```bash
+# 部署到测试环境
+./scripts/02-infrastructure-setup/deploy-infrastructure.sh test
+
+# 部署到生产环境
+./scripts/02-infrastructure-setup/deploy-infrastructure.sh prod
+
+# 自动确认部署
+./scripts/02-infrastructure-setup/deploy-infrastructure.sh test --auto-approve
+
+# 仅显示计划不执行
+./scripts/02-infrastructure-setup/deploy-infrastructure.sh test --plan-only
+```
+
 ## 🔧 Terraform环境初始化
 
 ### 1.1 配置环境变量

@@ -11,7 +11,86 @@
 
 ## 📋 环境要求检查
 
-### 必需工具安装
+### 🚀 自动化安装（推荐）
+
+我们提供了自动化脚本来简化环境搭建过程：
+
+```bash
+# 一键设置开发环境
+./scripts/01-environment-setup/setup-dev-env.sh
+
+# 下载Go依赖
+./scripts/01-environment-setup/download-deps.sh
+
+# 安装前端依赖
+./scripts/01-environment-setup/install-frontend-deps.sh
+```
+
+### 📋 脚本详细说明
+
+#### 1. setup-dev-env.sh - 开发环境一键安装
+**功能**: 自动检测系统并安装所有必要的开发工具
+- 检测操作系统类型（macOS/Linux）
+- 安装Go语言环境（1.21+）
+- 安装Node.js和npm（16+）
+- 安装Docker（20+）
+- 安装Terraform（1.0+）
+- 安装腾讯云CLI（可选）
+- 验证所有工具安装状态
+
+**使用方法**:
+```bash
+# 基本安装
+./scripts/01-environment-setup/setup-dev-env.sh
+
+# 跳过某些工具
+./scripts/01-environment-setup/setup-dev-env.sh --skip-docker --skip-tccli
+
+# 查看帮助
+./scripts/01-environment-setup/setup-dev-env.sh --help
+```
+
+#### 2. download-deps.sh - Go依赖下载
+**功能**: 下载所有Go模块依赖
+- 自动配置Go代理（提高下载速度）
+- 批量下载所有后端服务依赖
+- 验证依赖完整性
+- 清理下载缓存
+
+**使用方法**:
+```bash
+# 下载所有依赖
+./scripts/01-environment-setup/download-deps.sh
+
+# 使用特定代理
+GOPROXY=https://goproxy.cn,direct ./scripts/01-environment-setup/download-deps.sh
+
+# 强制重新下载
+./scripts/01-environment-setup/download-deps.sh --force
+```
+
+#### 3. install-frontend-deps.sh - 前端依赖安装
+**功能**: 安装前端项目依赖
+- 检测包管理器（npm/yarn/pnpm）
+- 安装前端依赖包
+- 验证安装结果
+- 显示项目信息
+
+**使用方法**:
+```bash
+# 使用npm安装
+./scripts/01-environment-setup/install-frontend-deps.sh
+
+# 使用yarn安装
+./scripts/01-environment-setup/install-frontend-deps.sh --use-yarn
+
+# 使用pnpm安装
+./scripts/01-environment-setup/install-frontend-deps.sh --use-pnpm
+```
+
+### 手动检查（备选方案）
+
+如果自动化脚本遇到问题，可以手动检查：
 
 ```bash
 # 1. 检查Go版本 (需要1.21+)

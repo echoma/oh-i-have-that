@@ -54,7 +54,7 @@ validate_environment() {
 }
 
 # 切换到terraform目录
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 
 # 执行命令
 case $COMMAND in

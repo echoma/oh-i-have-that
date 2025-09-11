@@ -17,7 +17,56 @@
 - 生产环境规划完成
 - 域名和SSL证书准备就绪
 
-## 🏗️ 生产基础设施部署
+## 🚀 自动化生产部署（推荐）
+
+使用我们提供的自动化脚本来简化生产环境部署：
+
+```bash
+# 一键部署到生产环境
+./scripts/05-production-deployment/deploy-to-prod.sh
+```
+
+### 📋 脚本详细说明
+
+#### deploy-to-prod.sh - 生产环境部署
+**功能**: 完整的生产环境部署流程
+- 生产环境安全检查
+- 部署基础设施到生产环境
+- 构建和推送生产镜像
+- 部署前端到生产COS
+- 部署云函数到生产环境
+- 配置生产域名和SSL
+- 执行生产验证测试
+
+**使用方法**:
+```bash
+# 完整生产部署流程
+./scripts/05-production-deployment/deploy-to-prod.sh
+
+# 脚本会自动执行以下步骤：
+# 1. 生产环境安全检查
+# 2. 基础设施部署
+# 3. 生产镜像构建
+# 4. 前端生产部署
+# 5. 云函数生产部署
+# 6. 域名和SSL配置
+# 7. 生产验证测试
+```
+
+**环境变量要求**:
+```bash
+export TENCENTCLOUD_SECRET_ID="your-secret-id"
+export TENCENTCLOUD_SECRET_KEY="your-secret-key"
+export PROD_DOMAIN="your-production-domain.com"  # 可选
+```
+
+**安全注意事项**:
+- 脚本会进行多重确认
+- 自动备份现有配置
+- 支持回滚操作
+- 包含安全检查清单
+
+## 🏗️ 手动生产基础设施部署（备选方案）
 
 ### 1.1 切换到生产环境
 

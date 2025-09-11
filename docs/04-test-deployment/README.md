@@ -16,7 +16,62 @@
 - 后端镜像制作完成
 - 基础设施部署成功
 
-## 🌐 前端部署
+## 🚀 自动化部署（推荐）
+
+使用我们提供的自动化脚本来简化测试环境部署：
+
+```bash
+# 一键部署到测试环境
+./scripts/04-test-deployment/deploy-to-test.sh
+```
+
+### 📋 脚本详细说明
+
+#### deploy-to-test.sh - 测试环境部署
+**功能**: 完整的测试环境部署流程
+- 检查必要工具和环境变量
+- 部署基础设施（如需要）
+- 构建和推送Docker镜像
+- 部署前端到COS
+- 部署云函数
+- 验证部署结果
+
+**使用方法**:
+```bash
+# 完整部署流程
+./scripts/04-test-deployment/deploy-to-test.sh
+
+# 脚本会自动执行以下步骤：
+# 1. 环境检查
+# 2. 基础设施部署
+# 3. 镜像构建和推送
+# 4. 前端部署
+# 5. 云函数部署
+# 6. 部署验证
+```
+
+**环境变量要求**:
+```bash
+export TENCENTCLOUD_SECRET_ID="your-secret-id"
+export TENCENTCLOUD_SECRET_KEY="your-secret-key"
+```
+
+#### legacy-deploy.sh - 旧版部署脚本
+**功能**: 保留的原始部署脚本，用作参考
+- 包含原有的部署逻辑
+- 可用于特殊情况下的手动部署
+- 提供部署流程的详细步骤
+
+**使用方法**:
+```bash
+# 查看旧版部署脚本
+cat ./scripts/04-test-deployment/legacy-deploy.sh
+
+# 如需使用旧版脚本
+./scripts/04-test-deployment/legacy-deploy.sh
+```
+
+## 🌐 手动前端部署（备选方案）
 
 ### 1.1 准备COS部署
 
