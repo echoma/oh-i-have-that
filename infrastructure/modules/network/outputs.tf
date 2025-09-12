@@ -16,5 +16,5 @@ output "security_group_id" {
 
 output "availability_zone" {
   description = "可用区"
-  value       = data.tencentcloud_availability_zones.available.zones[0].name
+  value       = data.tencentcloud_availability_zones_by_product.available.zones[0].name
 }

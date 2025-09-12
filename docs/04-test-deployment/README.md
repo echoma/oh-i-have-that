@@ -99,13 +99,10 @@ fi
 
 # 使用腾讯云CLI上传（需要先安装和配置）
 # 安装腾讯云CLI
-if ! command -v tccli &> /dev/null; then
     echo "安装腾讯云CLI..."
-    pip3 install tccli
     
     # 配置CLI
     echo "请配置腾讯云CLI认证："
-    echo "tccli configure"
     echo "输入SecretId: $TENCENTCLOUD_SECRET_ID"
     echo "输入SecretKey: $TENCENTCLOUD_SECRET_KEY"
     echo "输入Region: $TENCENTCLOUD_REGION"
@@ -131,8 +128,6 @@ find . -type f | while read file; do
         *) content_type="application/octet-stream" ;;
     esac
     
-    # 使用tccli上传文件
-    tccli cos PutObject \
         --Bucket "$COS_BUCKET_NAME" \
         --Key "$key" \
         --Body "$file" \
@@ -148,7 +143,6 @@ cd ../..
 echo "🌐 配置COS静态网站托管..."
 
 # 配置静态网站托管
-tccli cos PutBucketWebsite \
     --Bucket "$COS_BUCKET_NAME" \
     --WebsiteConfiguration '{
         "IndexDocument": {"Suffix": "index.html"},
@@ -239,7 +233,6 @@ EOF
 zip -r website-api.zip main.py
 
 # 部署云函数
-tccli scf CreateFunction \
     --FunctionName "website-api" \
     --Runtime "Python3.7" \
     --Handler "main.main_handler" \
@@ -308,7 +301,6 @@ EOF
 zip -r user-service.zip main.py
 
 # 部署用户服务
-tccli scf CreateFunction \
     --FunctionName "user-service" \
     --Runtime "Python3.7" \
     --Handler "main.main_handler" \
@@ -376,7 +368,6 @@ EOF
 zip -r notification-service.zip main.py
 
 # 部署通知服务
-tccli scf CreateFunction \
     --FunctionName "notification-service" \
     --Runtime "Python3.7" \
     --Handler "main.main_handler" \
@@ -396,7 +387,6 @@ cd ../..
 echo "🌉 配置API网关..."
 
 # 创建API服务
-API_SERVICE_ID=$(tccli apigateway CreateService \
     --ServiceName "oh-i-have-that-test" \
     --ServiceDesc "Oh I Have That Test Environment" \
     --Protocol "http&https" \
@@ -411,7 +401,6 @@ echo "API服务ID: $API_SERVICE_ID"
 echo "🔗 配置API路由..."
 
 # 配置website-api路由
-tccli apigateway CreateApi \
     --ServiceId "$API_SERVICE_ID" \
     --ApiName "website-api" \
     --ApiDesc "Website API endpoints" \
@@ -439,7 +428,6 @@ tccli apigateway CreateApi \
     }'
 
 # 配置user-service路由
-tccli apigateway CreateApi \
     --ServiceId "$API_SERVICE_ID" \
     --ApiName "user-service" \
     --ApiDesc "User service endpoints" \
@@ -453,7 +441,6 @@ tccli apigateway CreateApi \
     --ServiceType "SCF"
 
 # 配置notification-service路由
-tccli apigateway CreateApi \
     --ServiceId "$API_SERVICE_ID" \
     --ApiName "notification-service" \
     --ApiDesc "Notification service endpoints" \
@@ -473,7 +460,6 @@ tccli apigateway CreateApi \
 echo "🚀 发布API服务..."
 
 # 发布到测试环境
-tccli apigateway ReleaseService \
     --ServiceId "$API_SERVICE_ID" \
     --EnvironmentName "test" \
     --ReleaseDesc "Initial test deployment"
@@ -585,17 +571,14 @@ echo "📊 检查服务状态..."
 # 检查云函数状态
 echo "=== 云函数状态 ==="
 for func in website-api user-service notification-service; do
-    status=$(tccli scf GetFunction --FunctionName "$func" --query 'Status' --output text 2>/dev/null || echo "Not Found")
     echo "$func: $status"
 done
 
 # 检查API网关状态
 echo "=== API网关状态 ==="
-tccli apigateway DescribeService --ServiceId "$API_SERVICE_ID" --query 'ServiceName' --output text
 
 # 检查COS状态
 echo "=== COS状态 ==="
-tccli cos HeadBucket --Bucket "$COS_BUCKET_NAME" && echo "COS存储桶正常" || echo "COS存储桶异常"
 ```
 
 ### 5.2 性能测试

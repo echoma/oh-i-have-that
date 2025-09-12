@@ -10,12 +10,12 @@ terraform {
 
 # 创建SCF函数
 resource "tencentcloud_scf_function" "main" {
-  name         = var.function_name
-  description  = "SCF网站后端API函数"
-  handler      = "main"
-  memory_size  = var.memory_size
-  timeout      = var.timeout
-  runtime      = "CustomRuntime"
+  name        = var.function_name
+  description = "SCF网站后端API函数"
+  handler     = "main"
+  mem_size    = var.memory_size
+  timeout     = var.timeout
+  runtime     = "CustomRuntime"
   
   # 使用容器镜像
   image_config {
@@ -24,18 +24,14 @@ resource "tencentcloud_scf_function" "main" {
   }
   
   # VPC配置
-  vpc_config {
-    vpc_id    = var.vpc_id
-    subnet_id = var.subnet_id
-  }
+  vpc_id    = var.vpc_id
+  subnet_id = var.subnet_id
   
   # 环境变量
   environment = {
-    variables = {
-      TENCENTCLOUD_REGION = var.region
-      SCF_FUNCTIONNAME   = var.function_name
-      GIN_MODE          = "release"
-    }
+    TENCENTCLOUD_REGION = var.region
+    SCF_FUNCTIONNAME   = var.function_name
+    GIN_MODE          = "release"
   }
   
   # 异步执行配置
@@ -145,6 +141,7 @@ resource "tencentcloud_cls_index" "scf" {
       key_values {
         key = "level"
         value {
+          type        = "text"
           contain_z_h = true
           sql_flag    = true
           tokenizer   = "!@#%^&*()_=\"', <>/?|\\;:\n\t\r[]{}"
@@ -154,6 +151,7 @@ resource "tencentcloud_cls_index" "scf" {
       key_values {
         key = "message"
         value {
+          type        = "text"
           contain_z_h = true
           sql_flag    = true
           tokenizer   = "!@#%^&*()_=\"', <>/?|\\;:\n\t\r[]{}"
@@ -163,45 +161,8 @@ resource "tencentcloud_cls_index" "scf" {
   }
 }
 
-# 创建SCF触发器（API网关触发器）
-resource "tencentcloud_scf_trigger" "api_gateway" {
-  function_name = tencentcloud_scf_function.main.name
-  trigger_name  = "api-gateway-trigger"
-  type         = "apigw"
-  
-  trigger_desc = jsonencode({
-    service = {
-      serviceId = tencentcloud_api_gateway_service.main.id
-    }
-    api = {
-      apiId = tencentcloud_api_gateway_api.main.id
-    }
-    release = {
-      environmentName = "release"
-    }
-    enable = true
-  })
-  
-  depends_on = [
-    tencentcloud_api_gateway_service_release.main
-  ]
-}
-
-# 创建定时触发器（可选，用于健康检查）
-resource "tencentcloud_scf_trigger" "timer" {
-  function_name = tencentcloud_scf_function.main.name
-  trigger_name  = "health-check-timer"
-  type         = "timer"
-  
-  trigger_desc = jsonencode({
-    cron   = "0 */5 * * * * *"  # 每5分钟执行一次
-    enable = true
-    argument = jsonencode({
-      httpMethod = "GET"
-      path      = "/api/v1/health"
-    })
-  })
-}
+# 注意：SCF触发器需要通过腾讯云控制台手动配置，或使用其他方式创建
+# tencentcloud_scf_trigger 资源在当前provider版本中不可用
 
 # 本地变量
 locals {

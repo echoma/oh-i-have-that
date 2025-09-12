@@ -65,7 +65,7 @@ data "tencentcloud_user_info" "current" {}
 
 # 上传静态网站文件
 resource "tencentcloud_cos_bucket_object" "website_files" {
-  for_each = var.enable_auto_upload ? fileset(var.static_files_path, "**/*") : []
+  for_each = var.enable_auto_upload && fileexists("${var.static_files_path}/index.html") ? fileset(var.static_files_path, "**/*") : []
   
   bucket = tencentcloud_cos_bucket.website.bucket
   key    = each.value

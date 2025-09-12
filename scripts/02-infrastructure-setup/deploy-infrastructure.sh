@@ -85,13 +85,21 @@ init_terraform() {
     terraform workspace new $env 2>/dev/null || terraform workspace select $env
     
     # 初始化Terraform
-    if [ -f "environments/$env/backend.tf" ]; then
-        terraform init -backend-config="environments/$env/backend.tf"
+    if [ -f "environments/$env/backend.hcl" ]; then
+        if terraform init -backend-config="environments/$env/backend.hcl"; then
+            log_success "Terraform初始化完成"
+        else
+            log_error "Terraform初始化失败"
+            exit 1
+        fi
     else
-        terraform init
+        if terraform init; then
+            log_success "Terraform初始化完成"
+        else
+            log_error "Terraform初始化失败"
+            exit 1
+        fi
     fi
-    
-    log_success "Terraform初始化完成"
 }
 
 # 验证配置
@@ -131,9 +139,12 @@ plan_deployment() {
         log_info "仅规划模块: $target"
     fi
     
-    terraform plan $plan_args
-    
-    log_success "部署计划生成完成"
+    if terraform plan $plan_args; then
+        log_success "部署计划生成完成"
+    else
+        log_error "部署计划生成失败"
+        exit 1
+    fi
 }
 
 # 执行部署
@@ -146,12 +157,20 @@ apply_deployment() {
     local apply_args="tfplan-$env"
     
     if [[ "$auto_approve" == "true" ]]; then
-        terraform apply -auto-approve $apply_args
+        if terraform apply -auto-approve $apply_args; then
+            log_success "基础设施部署完成"
+        else
+            log_error "基础设施部署失败"
+            exit 1
+        fi
     else
-        terraform apply $apply_args
+        if terraform apply $apply_args; then
+            log_success "基础设施部署完成"
+        else
+            log_error "基础设施部署失败"
+            exit 1
+        fi
     fi
-    
-    log_success "基础设施部署完成"
 }
 
 # 显示部署结果

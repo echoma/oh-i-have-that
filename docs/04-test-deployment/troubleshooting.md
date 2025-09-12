@@ -13,20 +13,15 @@ Error: Access Denied
 
 ```bash
 # 1. 检查腾讯云CLI配置
-tccli configure list
 
 # 2. 重新配置认证
-tccli configure
 # 输入正确的SecretId和SecretKey
 
 # 3. 测试COS访问权限
-tccli cos HeadBucket --Bucket "$COS_BUCKET_NAME"
 
 # 4. 检查存储桶策略
-tccli cos GetBucketAcl --Bucket "$COS_BUCKET_NAME"
 
 # 5. 手动设置存储桶权限
-tccli cos PutBucketAcl \
     --Bucket "$COS_BUCKET_NAME" \
     --ACL "public-read"
 ```
@@ -45,7 +40,6 @@ Static website hosting not enabled
 echo "存储桶区域: $TENCENTCLOUD_REGION"
 
 # 2. 重新配置静态网站托管
-tccli cos PutBucketWebsite \
     --Bucket "$COS_BUCKET_NAME" \
     --WebsiteConfiguration '{
         "IndexDocument": {"Suffix": "index.html"},
@@ -54,7 +48,6 @@ tccli cos PutBucketWebsite \
     }'
 
 # 3. 验证配置
-tccli cos GetBucketWebsite --Bucket "$COS_BUCKET_NAME"
 
 # 4. 检查域名解析
 nslookup "$COS_BUCKET_URL"
@@ -75,7 +68,6 @@ upload_with_content_type() {
     local key="$2"
     local content_type="$3"
     
-    tccli cos PutObject \
         --Bucket "$COS_BUCKET_NAME" \
         --Key "$key" \
         --Body "$file" \
@@ -107,16 +99,13 @@ curl -I "$COS_BUCKET_URL/assets/index.css"
 
 ```bash
 # 1. 检查函数是否已存在
-tccli scf ListFunctions --query 'Functions[?FunctionName==`website-api`]'
 
 # 2. 删除现有函数
-tccli scf DeleteFunction --FunctionName "website-api"
 
 # 3. 重新创建函数
 # 使用之前的创建命令
 
 # 4. 或者更新现有函数
-tccli scf UpdateFunctionCode \
     --FunctionName "website-api" \
     --Code '{"ZipFile": "'$(base64 -i website-api.zip)'"}'
 ```
@@ -132,19 +121,16 @@ Runtime error or timeout
 
 ```bash
 # 1. 检查函数日志
-tccli scf GetFunctionLogs \
     --FunctionName "website-api" \
     --StartTime "2024-01-01 00:00:00" \
     --EndTime "2024-12-31 23:59:59"
 
 # 2. 增加函数超时时间
-tccli scf UpdateFunctionConfiguration \
     --FunctionName "website-api" \
     --Timeout 60 \
     --MemorySize 256
 
 # 3. 测试函数
-tccli scf Invoke \
     --FunctionName "website-api" \
     --InvocationType "RequestResponse" \
     --Payload '{"test": true}'
@@ -201,7 +187,6 @@ Permission denied
 
 ```bash
 # 1. 创建函数执行角色
-tccli cam CreateRole \
     --RoleName "SCF_QcsRole" \
     --PolicyDocument '{
         "version": "2.0",
@@ -217,12 +202,10 @@ tccli cam CreateRole \
     }'
 
 # 2. 附加策略到角色
-tccli cam AttachRolePolicy \
     --RoleName "SCF_QcsRole" \
     --PolicyName "QcloudSCFFullAccess"
 
 # 3. 更新函数配置
-tccli scf UpdateFunctionConfiguration \
     --FunctionName "website-api" \
     --Role "qcs::cam::uin/your-uin:role/SCF_QcsRole"
 ```
@@ -240,10 +223,8 @@ Service limit exceeded
 
 ```bash
 # 1. 检查现有API服务
-tccli apigateway DescribeServicesStatus
 
 # 2. 删除不用的API服务
-tccli apigateway DeleteService --ServiceId "old-service-id"
 
 # 3. 检查配额限制
 echo "请检查API网关配额限制"
@@ -264,12 +245,10 @@ API configuration invalid
 
 ```bash
 # 1. 检查API配置
-tccli apigateway DescribeApi \
     --ServiceId "$API_SERVICE_ID" \
     --ApiId "$API_ID"
 
 # 2. 修复API配置
-tccli apigateway ModifyApi \
     --ServiceId "$API_SERVICE_ID" \
     --ApiId "$API_ID" \
     --RequestConfig '{
@@ -286,7 +265,6 @@ tccli apigateway ModifyApi \
     }'
 
 # 3. 重新发布API
-tccli apigateway ReleaseService \
     --ServiceId "$API_SERVICE_ID" \
     --EnvironmentName "test" \
     --ReleaseDesc "Fix API configuration"
@@ -335,7 +313,6 @@ def main_handler(event, context):
 EOF
 
 # 2. 在API网关配置CORS
-tccli apigateway ModifyApi \
     --ServiceId "$API_SERVICE_ID" \
     --ApiId "$API_ID" \
     --ResponseType "HTML" \
@@ -494,7 +471,6 @@ EOF
 
 ```bash
 # 1. 优化云函数配置
-tccli scf UpdateFunctionConfiguration \
     --FunctionName "website-api" \
     --Timeout 30 \
     --MemorySize 512 \
@@ -505,7 +481,6 @@ tccli scf UpdateFunctionConfiguration \
     }'
 
 # 2. 启用函数预置并发
-tccli scf PutProvisionedConcurrencyConfig \
     --FunctionName "website-api" \
     --Qualifier "$LATEST" \
     --VersionProvisionedConcurrencyConfig '{
@@ -518,7 +493,6 @@ tccli scf PutProvisionedConcurrencyConfig \
 # 缓存常用数据
 
 # 4. 监控性能
-tccli scf GetFunctionEventInvokeConfig \
     --FunctionName "website-api"
 ```
 
@@ -534,7 +508,6 @@ echo "🔍 诊断测试环境..."
 # 检查COS
 echo "=== COS检查 ==="
 if [ -n "$COS_BUCKET_NAME" ]; then
-    tccli cos HeadBucket --Bucket "$COS_BUCKET_NAME" && echo "✅ COS存储桶正常" || echo "❌ COS存储桶异常"
     curl -I "$COS_BUCKET_URL" && echo "✅ 静态网站正常" || echo "❌ 静态网站异常"
 else
     echo "❌ COS配置缺失"
@@ -543,14 +516,12 @@ fi
 # 检查云函数
 echo "=== 云函数检查 ==="
 for func in website-api user-service notification-service; do
-    status=$(tccli scf GetFunction --FunctionName "$func" --query 'Status' --output text 2>/dev/null || echo "Not Found")
     echo "$func: $status"
 done
 
 # 检查API网关
 echo "=== API网关检查 ==="
 if [ -n "$API_SERVICE_ID" ]; then
-    tccli apigateway DescribeService --ServiceId "$API_SERVICE_ID" --query 'ServiceName' --output text
     curl -I "$API_GATEWAY_URL/api/v1/health" && echo "✅ API网关正常" || echo "❌ API网关异常"
 else
     echo "❌ API网关配置缺失"

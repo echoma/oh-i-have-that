@@ -1,13 +1,4 @@
 # 主配置文件
-terraform {
-  required_version = ">= 1.0"
-  required_providers {
-    tencentcloud = {
-      source  = "tencentcloudstack/tencentcloud"
-      version = "~> 1.81"
-    }
-  }
-}
 
 # 配置腾讯云Provider
 provider "tencentcloud" {
@@ -34,6 +25,7 @@ module "cos" {
   region      = var.region
   
   # 静态网站配置
+  bucket_name         = var.cos_bucket_name
   static_files_path   = var.static_files_path
   enable_auto_upload  = var.enable_auto_upload
   

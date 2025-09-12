@@ -141,7 +141,6 @@ echo "🔒 配置生产安全策略..."
 cd infrastructure
 
 # 配置COS存储桶安全策略
-tccli cos PutBucketPolicy \
     --Bucket "$PROD_COS_BUCKET_NAME" \
     --Policy '{
         "version": "2.0",
@@ -161,7 +160,6 @@ tccli cos PutBucketPolicy \
     }'
 
 # 配置HTTPS重定向
-tccli cos PutBucketWebsite \
     --Bucket "$PROD_COS_BUCKET_NAME" \
     --WebsiteConfiguration '{
         "IndexDocument": {"Suffix": "index.html"},
@@ -230,7 +228,6 @@ upload_file() {
     local cache_control="$3"
     
     # 上传原文件
-    tccli cos PutObject \
         --Bucket "$PROD_COS_BUCKET_NAME" \
         --Key "$key" \
         --Body "$file" \
@@ -239,7 +236,6 @@ upload_file() {
     
     # 如果存在gzip版本，也上传
     if [ -f "$file.gz" ]; then
-        tccli cos PutObject \
             --Bucket "$PROD_COS_BUCKET_NAME" \
             --Key "$key" \
             --Body "$file.gz" \
@@ -290,7 +286,6 @@ cd ../..
 echo "🌐 配置CDN加速..."
 
 # 创建CDN分发
-tccli cdn AddCdnDomain \
     --Domain "cdn.yourdomain.com" \
     --ServiceType "web" \
     --Origin '{
@@ -536,7 +531,6 @@ EOF
     zip -r "${service}-prod.zip" main.py
     
     # 部署云函数
-    tccli scf CreateFunction \
         --FunctionName "${service}-prod" \
         --Runtime "Python3.9" \
         --Handler "main.main_handler" \
@@ -568,7 +562,6 @@ done
 echo "🌉 创建生产API服务..."
 
 # 创建生产API服务
-PROD_API_SERVICE_ID=$(tccli apigateway CreateService \
     --ServiceName "oh-i-have-that-prod" \
     --ServiceDesc "Oh I Have That Production Environment" \
     --Protocol "https" \
@@ -578,7 +571,6 @@ PROD_API_SERVICE_ID=$(tccli apigateway CreateService \
 echo "生产API服务ID: $PROD_API_SERVICE_ID"
 
 # 配置服务级别的限流
-tccli apigateway ModifyService \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --ServiceName "oh-i-have-that-prod" \
     --ServiceDesc "Production API with rate limiting" \
@@ -591,7 +583,6 @@ tccli apigateway ModifyService \
 echo "🔗 配置生产API路由..."
 
 # 配置website-api路由
-tccli apigateway CreateApi \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --ApiName "website-api-prod" \
     --ApiDesc "Production Website API" \
@@ -639,12 +630,10 @@ tccli apigateway CreateApi \
 echo "🔒 配置API安全策略..."
 
 # 配置IP白名单（如果需要）
-# tccli apigateway BindSecretIds \
 #     --ServiceId "$PROD_API_SERVICE_ID" \
 #     --SecretIds '["your-secret-id"]'
 
 # 配置使用计划和API密钥
-USAGE_PLAN_ID=$(tccli apigateway CreateUsagePlan \
     --UsagePlanName "prod-usage-plan" \
     --UsagePlanDesc "Production usage plan" \
     --MaxRequestNum 10000 \
@@ -654,7 +643,6 @@ USAGE_PLAN_ID=$(tccli apigateway CreateUsagePlan \
 echo "使用计划ID: $USAGE_PLAN_ID"
 
 # 绑定使用计划到API服务
-tccli apigateway BindEnvironment \
     --UsagePlanId "$USAGE_PLAN_ID" \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --Environment "release" \
@@ -667,7 +655,6 @@ tccli apigateway BindEnvironment \
 echo "🚀 发布生产API..."
 
 # 发布到生产环境
-tccli apigateway ReleaseService \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --EnvironmentName "release" \
     --ReleaseDesc "Production release v1.0.0"
@@ -685,7 +672,6 @@ echo "生产API地址: $PROD_API_GATEWAY_URL"
 echo "📊 配置云监控..."
 
 # 创建告警策略
-tccli monitor CreateAlarmPolicy \
     --Module "monitor" \
     --PolicyName "prod-scf-alarm" \
     --MonitorType "MT_QCE" \
@@ -723,7 +709,6 @@ for service in "${services[@]}"; do
     echo "配置 $service 日志收集..."
     
     # 更新函数配置启用日志
-    tccli scf UpdateFunctionConfiguration \
         --FunctionName "${service}-prod" \
         --ClsLogsetId "your-logset-id" \
         --ClsTopicId "your-topic-id"
@@ -741,7 +726,6 @@ echo "日志查看: https://console.cloud.tencent.com/cls"
 echo "🌐 配置自定义域名..."
 
 # 为API网关配置自定义域名
-tccli apigateway CreateDomain \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --DomainName "api.yourdomain.com" \
     --CertificateId "your-ssl-cert-id" \
@@ -766,7 +750,6 @@ echo "请在DNS中配置CNAME记录指向CDN域名"
 echo "🔒 SSL证书配置..."
 
 # 上传SSL证书（如果还没有）
-# tccli ssl UploadCertificate \
 #     --CertificatePublicKey "$(cat your-cert.pem)" \
 #     --CertificatePrivateKey "$(cat your-key.pem)" \
 #     --CertificateType "SVR" \
@@ -838,17 +821,14 @@ echo "📊 检查监控状态..."
 # 检查云函数状态
 echo "=== 云函数状态 ==="
 for service in "${services[@]}"; do
-    status=$(tccli scf GetFunction --FunctionName "${service}-prod" --query 'Status' --output text 2>/dev/null || echo "Not Found")
     echo "${service}-prod: $status"
 done
 
 # 检查API网关状态
 echo "=== API网关状态 ==="
-tccli apigateway DescribeService --ServiceId "$PROD_API_SERVICE_ID" --query 'ServiceName' --output text
 
 # 检查告警策略
 echo "=== 告警策略 ==="
-tccli monitor DescribeAlarmPolicies --Module "monitor" --query 'Policies[?PolicyName==`prod-scf-alarm`]'
 
 echo "监控检查完成"
 ```

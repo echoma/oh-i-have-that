@@ -92,12 +92,10 @@ cat > valid_policy.json << 'EOF'
 EOF
 
 # 2. 应用正确的策略
-tccli cos PutBucketPolicy \
     --Bucket "$PROD_COS_BUCKET_NAME" \
     --Policy "$(cat valid_policy.json)"
 
 # 3. 验证策略
-tccli cos GetBucketPolicy --Bucket "$PROD_COS_BUCKET_NAME"
 ```
 
 ### 问题: HTTPS重定向不生效
@@ -110,10 +108,8 @@ tccli cos GetBucketPolicy --Bucket "$PROD_COS_BUCKET_NAME"
 
 ```bash
 # 1. 检查COS网站配置
-tccli cos GetBucketWebsite --Bucket "$PROD_COS_BUCKET_NAME"
 
 # 2. 重新配置HTTPS重定向
-tccli cos PutBucketWebsite \
     --Bucket "$PROD_COS_BUCKET_NAME" \
     --WebsiteConfiguration '{
         "IndexDocument": {"Suffix": "index.html"},
@@ -178,7 +174,6 @@ NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 ```bash
 # 1. 检查文件是否正确上传
-tccli cos GetObject \
     --Bucket "$PROD_COS_BUCKET_NAME" \
     --Key "assets/index.css" \
     --OutputFile "/tmp/test.css"
@@ -191,7 +186,6 @@ cd frontend/dist
 for file in $(find . -name "*.css" -o -name "*.js"); do
     key=${file#./}
     echo "上传: $key"
-    tccli cos PutObject \
         --Bucket "$PROD_COS_BUCKET_NAME" \
         --Key "$key" \
         --Body "$file"
@@ -359,13 +353,11 @@ done
 
 # 3. 使用COS上传大包
 # 如果包大于50MB，先上传到COS
-tccli cos PutObject \
     --Bucket "$PROD_COS_BUCKET_NAME" \
     --Key "functions/website-api-prod.zip" \
     --Body "website-api-prod.zip"
 
 # 然后从COS部署
-tccli scf CreateFunction \
     --FunctionName "website-api-prod" \
     --Code '{
         "CosBucketName": "'$PROD_COS_BUCKET_NAME'",
@@ -386,7 +378,6 @@ Runtime error in production function
 
 ```bash
 # 1. 检查函数日志
-tccli scf GetFunctionLogs \
     --FunctionName "website-api-prod" \
     --StartTime "$(date -d '1 hour ago' '+%Y-%m-%d %H:%M:%S')" \
     --EndTime "$(date '+%Y-%m-%d %H:%M:%S')"
@@ -464,7 +455,6 @@ def process_request(event, context, request_id):
 EOF
 
 # 3. 更新函数配置
-tccli scf UpdateFunctionConfiguration \
     --FunctionName "website-api-prod" \
     --Timeout 60 \
     --MemorySize 512 \
@@ -489,21 +479,18 @@ Service name already exists
 
 ```bash
 # 1. 检查现有服务
-tccli apigateway DescribeServicesStatus | grep "oh-i-have-that"
 
 # 2. 使用唯一服务名
 TIMESTAMP=$(date +%s)
 PROD_SERVICE_NAME="oh-i-have-that-prod-$TIMESTAMP"
 
 # 3. 创建服务
-PROD_API_SERVICE_ID=$(tccli apigateway CreateService \
     --ServiceName "$PROD_SERVICE_NAME" \
     --ServiceDesc "Production API Service" \
     --Protocol "https" \
     --query 'ServiceId' --output text)
 
 # 4. 或者删除冲突的服务
-# tccli apigateway DeleteService --ServiceId "conflicting-service-id"
 ```
 
 ### 问题: API路由配置错误
@@ -517,11 +504,9 @@ API path conflict or invalid configuration
 
 ```bash
 # 1. 检查现有API配置
-tccli apigateway DescribeApisStatus \
     --ServiceId "$PROD_API_SERVICE_ID"
 
 # 2. 删除冲突的API
-# tccli apigateway DeleteApi \
 #     --ServiceId "$PROD_API_SERVICE_ID" \
 #     --ApiId "conflicting-api-id"
 
@@ -531,7 +516,6 @@ create_api_with_correct_config() {
     local path_pattern="$2"
     local function_name="$3"
     
-    tccli apigateway CreateApi \
         --ServiceId "$PROD_API_SERVICE_ID" \
         --ApiName "$api_name" \
         --ApiType "NORMAL" \
@@ -566,17 +550,14 @@ create_api_with_correct_config "user-service-prod" "/users/{proxy+}" "user-servi
 
 ```bash
 # 1. 检查使用计划配置
-tccli apigateway DescribeUsagePlansStatus
 
 # 2. 调整限流配置
-tccli apigateway ModifyUsagePlan \
     --UsagePlanId "$USAGE_PLAN_ID" \
     --UsagePlanName "prod-usage-plan-updated" \
     --MaxRequestNum 100000 \
     --MaxRequestNumPreSec 1000
 
 # 3. 创建VIP使用计划
-VIP_USAGE_PLAN_ID=$(tccli apigateway CreateUsagePlan \
     --UsagePlanName "prod-vip-plan" \
     --UsagePlanDesc "VIP usage plan for production" \
     --MaxRequestNum 1000000 \
@@ -584,7 +565,6 @@ VIP_USAGE_PLAN_ID=$(tccli apigateway CreateUsagePlan \
     --query 'UsagePlanId' --output text)
 
 # 4. 绑定VIP计划
-tccli apigateway BindEnvironment \
     --UsagePlanId "$VIP_USAGE_PLAN_ID" \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --Environment "release"
@@ -615,7 +595,6 @@ dig api.yourdomain.com
 echo "DNS传播可能需要24-48小时"
 
 # 4. 重新尝试配置
-tccli apigateway CreateDomain \
     --ServiceId "$PROD_API_SERVICE_ID" \
     --DomainName "api.yourdomain.com" \
     --CertificateId "your-ssl-cert-id" \
@@ -644,14 +623,12 @@ echo "申请新的SSL证书"
 echo "控制台: https://console.cloud.tencent.com/ssl"
 
 # 3. 上传新证书
-# tccli ssl UploadCertificate \
 #     --CertificatePublicKey "$(cat new-cert.pem)" \
 #     --CertificatePrivateKey "$(cat new-key.pem)" \
 #     --CertificateType "SVR" \
 #     --Alias "api.yourdomain.com"
 
 # 4. 更新域名配置
-# tccli apigateway ModifyDomain \
 #     --ServiceId "$PROD_API_SERVICE_ID" \
 #     --DomainName "api.yourdomain.com" \
 #     --CertificateId "new-cert-id"
@@ -669,12 +646,10 @@ echo "控制台: https://console.cloud.tencent.com/ssl"
 
 ```bash
 # 1. 检查告警策略
-tccli monitor DescribeAlarmPolicies \
     --Module "monitor" \
     --query 'Policies[?PolicyName==`prod-scf-alarm`]'
 
 # 2. 配置通知渠道
-tccli monitor CreateAlarmNotice \
     --Name "prod-alarm-notice" \
     --NoticeType "ALL" \
     --NoticeLanguage "zh-CN" \
@@ -693,7 +668,6 @@ tccli monitor CreateAlarmNotice \
     }]'
 
 # 3. 绑定告警策略和通知
-tccli monitor BindingPolicyObject \
     --Module "monitor" \
     --GroupId "alarm-policy-group-id" \
     --PolicyId "alarm-policy-id" \
@@ -713,12 +687,9 @@ echo "手动触发告警进行测试"
 
 ```bash
 # 1. 检查CLS配置
-tccli cls DescribeLogsets
-tccli cls DescribeTopics --LogsetId "your-logset-id"
 
 # 2. 重新配置函数日志
 for service in website-api user-service notification-service; do
-    tccli scf UpdateFunctionConfiguration \
         --FunctionName "${service}-prod" \
         --ClsLogsetId "your-logset-id" \
         --ClsTopicId "your-topic-id"
@@ -728,7 +699,6 @@ done
 echo "确保云函数有写入CLS的权限"
 
 # 4. 手动查看日志
-tccli cls SearchLog \
     --LogsetId "your-logset-id" \
     --TopicIds '["your-topic-id"]' \
     --StartTime "$(date -d '1 hour ago' +%s)" \
@@ -749,7 +719,6 @@ tccli cls SearchLog \
 ```bash
 # 1. 优化云函数配置
 for service in website-api user-service notification-service; do
-    tccli scf UpdateFunctionConfiguration \
         --FunctionName "${service}-prod" \
         --Timeout 30 \
         --MemorySize 1024 \
@@ -762,7 +731,6 @@ for service in website-api user-service notification-service; do
 done
 
 # 2. 启用预置并发
-tccli scf PutProvisionedConcurrencyConfig \
     --FunctionName "website-api-prod" \
     --Qualifier "\$LATEST" \
     --VersionProvisionedConcurrencyConfig '{
@@ -805,7 +773,6 @@ echo | openssl s_client -servername www.yourdomain.com -connect www.yourdomain.c
 # 检查云函数状态
 echo "=== 云函数状态 ==="
 for service in website-api user-service notification-service; do
-    status=$(tccli scf GetFunction --FunctionName "${service}-prod" --query 'Status' --output text 2>/dev/null || echo "Not Found")
     echo "${service}-prod: $status"
 done
 
@@ -846,7 +813,6 @@ echo "🚨 执行紧急回滚..."
 # 回滚云函数
 for service in website-api user-service notification-service; do
     echo "回滚 $service..."
-    tccli scf UpdateFunctionCode \
         --FunctionName "${service}-prod" \
         --Code '{"ZipFile": "'$(base64 -i "backup/${service}-last-good.zip")'"}'
 done

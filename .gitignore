@@ -22,8 +22,6 @@ terraform.tfvars
 .env.test
 
 # 腾讯云配置文件
-.tccli/
-*.credential
 .tencentcloud/
 
 # 状态管理相关文件

@@ -34,11 +34,11 @@ resource "tencentcloud_tcr_namespace" "main" {
 resource "tencentcloud_tcr_repository" "apps" {
   for_each = toset(var.app_names)
   
-  instance_id     = tencentcloud_tcr_instance.main.id
-  namespace_name  = tencentcloud_tcr_namespace.main.name
-  repository_name = each.value
-  brief_desc      = "${each.value} 应用容器镜像"
-  description     = "用于SCF云函数的 ${each.value} 应用容器镜像"
+  instance_id    = tencentcloud_tcr_instance.main.id
+  namespace_name = tencentcloud_tcr_namespace.main.name
+  name           = each.value
+  brief_desc     = "${each.value} 应用容器镜像"
+  description    = "用于SCF云函数的 ${each.value} 应用容器镜像"
 }
 
 # 获取当前用户信息用于构建镜像URI

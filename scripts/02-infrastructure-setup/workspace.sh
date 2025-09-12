@@ -53,8 +53,8 @@ validate_environment() {
     fi
 }
 
-# 切换到terraform目录
-cd "$(dirname "$0")/../.."
+# 切换到infrastructure目录
+cd "$(dirname "$0")/../../infrastructure"
 
 # 执行命令
 case $COMMAND in
@@ -62,11 +62,47 @@ case $COMMAND in
         validate_environment
         echo -e "${BLUE}初始化 $ENVIRONMENT 环境...${NC}"
         
+        # 检查必要的工具和环境变量
+        if ! command -v terraform &> /dev/null; then
+            echo -e "${RED}错误: Terraform未安装，请先安装Terraform${NC}"
+            exit 1
+        fi
+        
+        if [[ -z "$TENCENTCLOUD_SECRET_ID" ]] || [[ -z "$TENCENTCLOUD_SECRET_KEY" ]]; then
+            echo -e "${RED}错误: 请设置腾讯云认证环境变量${NC}"
+            echo "export TENCENTCLOUD_SECRET_ID=\"your-secret-id\""
+            echo "export TENCENTCLOUD_SECRET_KEY=\"your-secret-key\""
+            exit 1
+        fi
+        
+        # 检查配置文件是否存在
+        if [[ ! -f "environments/$ENVIRONMENT/backend.hcl" ]]; then
+            echo -e "${RED}错误: 后端配置文件不存在: environments/$ENVIRONMENT/backend.hcl${NC}"
+            exit 1
+        fi
+        
+        if [[ ! -f "environments/$ENVIRONMENT/terraform.tfvars" ]]; then
+            echo -e "${RED}错误: 环境变量文件不存在: environments/$ENVIRONMENT/terraform.tfvars${NC}"
+            exit 1
+        fi
+        
+        # 提示用户确认状态存储桶已创建
+        echo -e "${YELLOW}⚠️  请确认您已在腾讯云控制台手动创建了状态存储桶${NC}"
+        echo "存储桶名称应为: tfstate-oihavethat-xxxxxx (腾讯云会自动添加后缀)"
+        read -p "是否已创建状态存储桶？(y/N): " confirm
+        if [[ ! $confirm =~ ^[Yy]$ ]]; then
+            echo -e "${YELLOW}请先在腾讯云控制台创建状态存储桶，然后重新运行此命令${NC}"
+            exit 1
+        fi
+        
+        # 先进行基础初始化
+        terraform init
+        
         # 创建工作空间（如果不存在）
         terraform workspace new $ENVIRONMENT 2>/dev/null || terraform workspace select $ENVIRONMENT
         
-        # 初始化
-        terraform init -backend-config="environments/$ENVIRONMENT/backend.tf"
+        # 重新初始化并配置后端
+        terraform init -backend-config="environments/$ENVIRONMENT/backend.hcl" -reconfigure
         
         echo -e "${GREEN}✅ $ENVIRONMENT 环境初始化完成${NC}"
         ;;

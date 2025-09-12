@@ -224,22 +224,6 @@ install_docker() {
     log_success "Docker安装完成"
 }
 
-# 安装腾讯云CLI
-install_tccli() {
-    log_info "安装腾讯云CLI..."
-    
-    if command -v pip3 &> /dev/null; then
-        pip3 install tccli
-    elif command -v pip &> /dev/null; then
-        pip install tccli
-    else
-        log_error "请先安装Python和pip"
-        return 1
-    fi
-    
-    log_success "腾讯云CLI安装完成"
-}
-
 # 配置腾讯云认证
 configure_tencent_cloud() {
     log_info "配置腾讯云认证..."
@@ -254,14 +238,8 @@ configure_tencent_cloud() {
         echo ""
         echo "然后执行: source ~/.bashrc"
         return 1
-    fi
-    
-    # 配置tccli
-    if command -v tccli &> /dev/null; then
-        tccli configure set secretId $TENCENTCLOUD_SECRET_ID
-        tccli configure set secretKey $TENCENTCLOUD_SECRET_KEY
-        tccli configure set region $TENCENTCLOUD_REGION
-        log_success "腾讯云CLI配置完成"
+    else
+        log_success "腾讯云认证环境变量已配置"
     fi
 }
 
@@ -295,15 +273,11 @@ verify_installation() {
         all_good=false
     fi
     
-    # 检查腾讯云CLI
-    if check_tool "tccli" "tccli --version"; then
-        if [ -n "$TENCENTCLOUD_SECRET_ID" ]; then
-            log_success "腾讯云认证已配置"
-        else
-            log_warning "腾讯云认证未配置"
-            all_good=false
-        fi
+    # 检查腾讯云认证
+    if [ -n "$TENCENTCLOUD_SECRET_ID" ]; then
+        log_success "腾讯云认证已配置"
     else
+        log_warning "腾讯云认证未配置"
         all_good=false
     fi
     
@@ -330,13 +304,11 @@ main() {
     local need_node=false
     local need_terraform=false
     local need_docker=false
-    local need_tccli=false
     
     check_tool "go" "go version" || need_go=true
     check_tool "node" "node --version" || need_node=true
     check_tool "terraform" "terraform version" || need_terraform=true
     check_tool "docker" "docker --version" || need_docker=true
-    check_tool "tccli" "tccli --version" || need_tccli=true
     
     echo ""
     
@@ -355,10 +327,6 @@ main() {
     
     if $need_docker; then
         install_docker
-    fi
-    
-    if $need_tccli; then
-        install_tccli
     fi
     
     # 配置腾讯云
