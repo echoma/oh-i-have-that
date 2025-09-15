@@ -32,6 +32,12 @@ variable "enable_auto_upload" {
   default     = true
 }
 
+variable "app_id" {
+  description = "腾讯云账户 App ID"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "资源标签"
   type        = map(string)

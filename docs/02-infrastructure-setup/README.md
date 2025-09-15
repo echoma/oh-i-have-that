@@ -37,6 +37,23 @@
 
 详细的脚本使用方法请参考 `scripts/02-infrastructure-setup/` 目录中的脚本文件。
 
+### 启用SCF和CLB功能
+
+如果需要启用动态后端功能（SCF云函数和CLB负载均衡），可以使用渐进式部署脚本：
+
+```bash
+# 渐进式启用SCF和CLB功能
+./scripts/02-infrastructure-setup/enable-scf-clb.sh test 1  # 启用容器注册表
+./scripts/02-infrastructure-setup/enable-scf-clb.sh test 2  # 启用Docker构建
+./scripts/02-infrastructure-setup/enable-scf-clb.sh test 3  # 启用SCF云函数
+./scripts/02-infrastructure-setup/enable-scf-clb.sh test 4  # 启用完整架构(包括CLB)
+
+# 查看帮助信息
+./scripts/02-infrastructure-setup/enable-scf-clb.sh --help
+```
+
+**注意**: 启用SCF和CLB功能可能需要额外的腾讯云权限，建议分步骤执行以便排查问题。
+
 ## 🔧 Terraform状态存储桶创建（手工操作）
 
 在使用Terraform之前，需要先在腾讯云控制台手动创建用于存储Terraform状态的COS存储桶：

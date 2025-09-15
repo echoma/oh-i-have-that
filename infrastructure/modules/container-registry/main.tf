@@ -8,10 +8,10 @@ terraform {
   }
 }
 
-# 创建TCR实例（容器镜像仓库）
+# 创建TCR实例（容器镜像仓库）- 使用个人版（免费）
 resource "tencentcloud_tcr_instance" "main" {
   name          = "${var.project_name}-${var.environment}-tcr"
-  instance_type = "basic"
+  instance_type = "personal"
   delete_bucket = true
   
   tags = var.tags
@@ -41,8 +41,11 @@ resource "tencentcloud_tcr_repository" "apps" {
   description    = "用于SCF云函数的 ${each.value} 应用容器镜像"
 }
 
-# 获取当前用户信息用于构建镜像URI
-data "tencentcloud_user_info" "current" {}
+# 获取当前用户信息用于构建镜像URI - 使用本地数据源避免权限问题
+locals {
+  # 从环境变量或配置中获取 app_id，避免调用 cam:DescribeSubAccounts
+  app_id = var.app_id != "" ? var.app_id : "1256219290"  # 使用默认值或从变量传入
+}
 
 # 本地变量
 locals {

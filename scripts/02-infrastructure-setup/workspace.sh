@@ -3,12 +3,8 @@
 # Terraform工作空间管理脚本
 set -e
 
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# 导入公共函数库
+source "$(dirname "$0")/terraform-common.sh"
 
 # 显示帮助信息
 show_help() {
@@ -44,136 +40,91 @@ fi
 COMMAND=$1
 ENVIRONMENT=${2:-""}
 
-# 验证环境参数
-validate_environment() {
-    if [ "$ENVIRONMENT" != "test" ] && [ "$ENVIRONMENT" != "prod" ]; then
-        echo -e "${RED}错误: 无效的环境 '$ENVIRONMENT'${NC}"
-        echo -e "${YELLOW}支持的环境: test, prod${NC}"
-        exit 1
-    fi
-}
+# 需要环境参数的命令
+case $COMMAND in
+    "init"|"plan"|"apply"|"destroy"|"switch")
+        if [[ -z "$ENVIRONMENT" ]]; then
+            log_error "命令 '$COMMAND' 需要指定环境参数"
+            show_help
+            exit 1
+        fi
+        
+        if ! validate_environment "$ENVIRONMENT"; then
+            exit 1
+        fi
+        ;;
+esac
 
 # 切换到infrastructure目录
-cd "$(dirname "$0")/../../infrastructure"
+if ! ensure_infrastructure_dir; then
+    exit 1
+fi
 
 # 执行命令
 case $COMMAND in
     "init")
-        validate_environment
-        echo -e "${BLUE}初始化 $ENVIRONMENT 环境...${NC}"
+        log_info "初始化 $ENVIRONMENT 环境..."
         
-        # 检查必要的工具和环境变量
-        if ! command -v terraform &> /dev/null; then
-            echo -e "${RED}错误: Terraform未安装，请先安装Terraform${NC}"
+        # 检查环境要求
+        if ! check_requirements; then
             exit 1
         fi
         
-        if [[ -z "$TENCENTCLOUD_SECRET_ID" ]] || [[ -z "$TENCENTCLOUD_SECRET_KEY" ]]; then
-            echo -e "${RED}错误: 请设置腾讯云认证环境变量${NC}"
-            echo "export TENCENTCLOUD_SECRET_ID=\"your-secret-id\""
-            echo "export TENCENTCLOUD_SECRET_KEY=\"your-secret-key\""
+        # 确认状态存储桶
+        if ! confirm_state_bucket; then
             exit 1
         fi
         
-        # 检查配置文件是否存在
-        if [[ ! -f "environments/$ENVIRONMENT/backend.hcl" ]]; then
-            echo -e "${RED}错误: 后端配置文件不存在: environments/$ENVIRONMENT/backend.hcl${NC}"
+        # 初始化Terraform
+        if terraform_init "$ENVIRONMENT" true; then
+            log_success "$ENVIRONMENT 环境初始化完成"
+        else
             exit 1
         fi
-        
-        if [[ ! -f "environments/$ENVIRONMENT/terraform.tfvars" ]]; then
-            echo -e "${RED}错误: 环境变量文件不存在: environments/$ENVIRONMENT/terraform.tfvars${NC}"
-            exit 1
-        fi
-        
-        # 提示用户确认状态存储桶已创建
-        echo -e "${YELLOW}⚠️  请确认您已在腾讯云控制台手动创建了状态存储桶${NC}"
-        echo "存储桶名称应为: tfstate-oihavethat-xxxxxx (腾讯云会自动添加后缀)"
-        read -p "是否已创建状态存储桶？(y/N): " confirm
-        if [[ ! $confirm =~ ^[Yy]$ ]]; then
-            echo -e "${YELLOW}请先在腾讯云控制台创建状态存储桶，然后重新运行此命令${NC}"
-            exit 1
-        fi
-        
-        # 先进行基础初始化
-        terraform init
-        
-        # 创建工作空间（如果不存在）
-        terraform workspace new $ENVIRONMENT 2>/dev/null || terraform workspace select $ENVIRONMENT
-        
-        # 重新初始化并配置后端
-        terraform init -backend-config="environments/$ENVIRONMENT/backend.hcl" -reconfigure
-        
-        echo -e "${GREEN}✅ $ENVIRONMENT 环境初始化完成${NC}"
         ;;
         
     "plan")
-        validate_environment
-        echo -e "${BLUE}生成 $ENVIRONMENT 环境执行计划...${NC}"
+        log_info "生成 $ENVIRONMENT 环境执行计划..."
         
-        terraform workspace select $ENVIRONMENT
-        terraform plan -var-file="environments/$ENVIRONMENT/terraform.tfvars"
+        if terraform_workspace_select "$ENVIRONMENT" && terraform_plan "$ENVIRONMENT"; then
+            log_success "执行计划生成完成"
+        else
+            exit 1
+        fi
         ;;
         
     "apply")
-        validate_environment
-        echo -e "${BLUE}部署 $ENVIRONMENT 环境...${NC}"
+        log_info "部署 $ENVIRONMENT 环境..."
         
-        terraform workspace select $ENVIRONMENT
-        terraform apply -var-file="environments/$ENVIRONMENT/terraform.tfvars"
-        
-        echo -e "${GREEN}✅ $ENVIRONMENT 环境部署完成${NC}"
+        if terraform_workspace_select "$ENVIRONMENT" && terraform_apply "" false; then
+            log_success "$ENVIRONMENT 环境部署完成"
+        else
+            exit 1
+        fi
         ;;
         
     "destroy")
-        validate_environment
-        echo -e "${YELLOW}⚠️  准备销毁 $ENVIRONMENT 环境的所有资源${NC}"
-        echo -e "${RED}这个操作不可逆！${NC}"
-        read -p "确认继续？(输入 'yes' 确认): " confirm
-        
-        if [ "$confirm" = "yes" ]; then
-            terraform workspace select $ENVIRONMENT
-            terraform destroy -var-file="environments/$ENVIRONMENT/terraform.tfvars"
-            echo -e "${GREEN}✅ $ENVIRONMENT 环境资源已销毁${NC}"
+        if terraform_workspace_select "$ENVIRONMENT" && terraform_destroy "$ENVIRONMENT"; then
+            log_success "$ENVIRONMENT 环境资源已销毁"
         else
-            echo -e "${YELLOW}操作已取消${NC}"
+            exit 1
         fi
         ;;
         
     "switch")
-        validate_environment
-        echo -e "${BLUE}切换到 $ENVIRONMENT 环境...${NC}"
-        
-        terraform workspace select $ENVIRONMENT
-        echo -e "${GREEN}✅ 已切换到 $ENVIRONMENT 环境${NC}"
+        if terraform_workspace_select "$ENVIRONMENT"; then
+            log_success "已切换到 $ENVIRONMENT 环境"
+        else
+            exit 1
+        fi
         ;;
         
     "list")
-        echo -e "${BLUE}可用的环境:${NC}"
-        terraform workspace list
-        
-        echo ""
-        echo -e "${BLUE}当前环境:${NC}"
-        terraform workspace show
+        terraform_workspace_list
         ;;
         
     "status")
-        echo -e "${BLUE}当前环境状态:${NC}"
-        echo "工作空间: $(terraform workspace show)"
-        echo ""
-        
-        # 显示资源状态
-        if terraform state list >/dev/null 2>&1; then
-            echo -e "${GREEN}已部署的资源:${NC}"
-            terraform state list | head -10
-            
-            resource_count=$(terraform state list | wc -l)
-            if [ $resource_count -gt 10 ]; then
-                echo "... 还有 $((resource_count - 10)) 个资源"
-            fi
-        else
-            echo -e "${YELLOW}未找到已部署的资源${NC}"
-        fi
+        terraform_show_status
         ;;
         
     "help"|"-h"|"--help")
@@ -181,7 +132,7 @@ case $COMMAND in
         ;;
         
     *)
-        echo -e "${RED}错误: 未知命令 '$COMMAND'${NC}"
+        log_error "未知命令 '$COMMAND'"
         show_help
         exit 1
         ;;

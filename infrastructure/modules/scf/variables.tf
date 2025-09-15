@@ -26,8 +26,8 @@ variable "memory_size" {
   default     = 128
   
   validation {
-    condition     = var.memory_size >= 64 && var.memory_size <= 3008
-    error_message = "内存大小必须在64MB到3008MB之间。"
+    condition     = var.memory_size >= 128 && var.memory_size <= 3008 && var.memory_size % 128 == 0
+    error_message = "内存大小必须在128MB到3008MB之间，且必须是128MB的倍数。"
   }
 }
 

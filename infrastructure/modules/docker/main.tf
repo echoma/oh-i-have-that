@@ -20,9 +20,9 @@ resource "null_resource" "build_images" {
   for_each = toset(var.app_names)
   
   triggers = {
-    dockerfile_hash = filemd5("${var.apps_path}/${each.value}/Dockerfile")
-    main_go_hash   = filemd5("${var.apps_path}/${each.value}/main.go")
-    go_mod_hash    = filemd5("${var.apps_path}/${each.value}/go.mod")
+    dockerfile_hash = fileexists("${var.apps_path}/${each.value}/Dockerfile") ? filemd5("${var.apps_path}/${each.value}/Dockerfile") : "no-dockerfile"
+    main_go_hash   = fileexists("${var.apps_path}/${each.value}/main.go") ? filemd5("${var.apps_path}/${each.value}/main.go") : "no-main-go"
+    go_mod_hash    = fileexists("${var.apps_path}/${each.value}/go.mod") ? filemd5("${var.apps_path}/${each.value}/go.mod") : "no-go-mod"
   }
 
   provisioner "local-exec" {

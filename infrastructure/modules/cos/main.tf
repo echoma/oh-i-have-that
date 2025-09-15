@@ -17,7 +17,7 @@ resource "random_string" "bucket_suffix" {
 
 # 创建COS存储桶
 resource "tencentcloud_cos_bucket" "website" {
-  bucket = var.bucket_name != "" ? var.bucket_name : "${var.project_name}-${var.environment}-${random_string.bucket_suffix.result}"
+  bucket = var.bucket_name != "" ? var.bucket_name : "oihavethat-${var.environment}-${random_string.bucket_suffix.result}-${local.app_id}"
   acl    = "public-read"
   
   # 启用静态网站托管
@@ -34,7 +34,8 @@ resource "tencentcloud_cos_bucket" "website" {
     max_age_seconds = 300
   }
   
-  tags = var.tags
+  # 移除标签以避免保留标签前缀问题
+  # tags = var.tags
 }
 
 # 创建存储桶策略，允许公开读取
@@ -53,15 +54,18 @@ resource "tencentcloud_cos_bucket_policy" "website" {
           "cos:GetObject"
         ]
         resource = [
-          "qcs::cos:${var.region}:uid/${data.tencentcloud_user_info.current.app_id}:${tencentcloud_cos_bucket.website.bucket}/*"
+          "qcs::cos:${var.region}:uid/${local.app_id}:${tencentcloud_cos_bucket.website.bucket}/*"
         ]
       }
     ]
   })
 }
 
-# 获取当前用户信息
-data "tencentcloud_user_info" "current" {}
+# 获取当前用户信息 - 使用本地数据源避免权限问题
+locals {
+  # 从环境变量或配置中获取 app_id，避免调用 cam:DescribeSubAccounts
+  app_id = var.app_id != "" ? var.app_id : "1256219290"  # 使用默认值或从变量传入
+}
 
 # 上传静态网站文件
 resource "tencentcloud_cos_bucket_object" "website_files" {

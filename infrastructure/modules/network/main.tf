@@ -12,7 +12,8 @@ terraform {
 resource "tencentcloud_vpc" "main" {
   name       = "${var.project_name}-${var.environment}-vpc"
   cidr_block = "10.0.0.0/16"
-  tags       = var.tags
+  # 移除标签以避免保留标签键问题
+  # tags       = var.tags
 }
 
 # 创建子网
@@ -22,7 +23,8 @@ resource "tencentcloud_subnet" "main" {
   availability_zone = data.tencentcloud_availability_zones_by_product.available.zones[0].name
   cidr_block        = "10.0.1.0/24"
   is_multicast      = false
-  tags              = var.tags
+  # 移除标签以避免保留标签键问题
+  # tags              = var.tags
 }
 
 # 获取可用区信息
@@ -34,7 +36,8 @@ data "tencentcloud_availability_zones_by_product" "available" {
 resource "tencentcloud_security_group" "scf" {
   name        = "${var.project_name}-${var.environment}-scf-sg"
   description = "Security group for SCF functions"
-  tags        = var.tags
+  # 移除标签以避免保留标签键问题
+  # tags        = var.tags
 }
 
 # 安全组规则集

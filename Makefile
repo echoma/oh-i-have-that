@@ -12,15 +12,16 @@ help: ## 显示帮助信息
 # 🔒 状态管理
 init-state: ## 初始化远程状态存储
 	@echo "🔒 初始化远程状态存储..."
-	./scripts/init-state-storage.sh both
+	./scripts/02-infrastructure-setup/deploy-infrastructure.sh test --init
+	./scripts/02-infrastructure-setup/deploy-infrastructure.sh prod --init
 
 init-state-test: ## 初始化测试环境状态存储
 	@echo "🔒 初始化测试环境状态存储..."
-	./scripts/init-state-storage.sh test
+	./scripts/02-infrastructure-setup/deploy-infrastructure.sh test --init
 
 init-state-prod: ## 初始化生产环境状态存储
 	@echo "🔒 初始化生产环境状态存储..."
-	./scripts/init-state-storage.sh prod
+	./scripts/02-infrastructure-setup/deploy-infrastructure.sh prod --init
 
 backup-state: ## 备份当前状态文件
 	@echo "💾 备份状态文件..."
@@ -28,56 +29,68 @@ backup-state: ## 备份当前状态文件
 	cd infrastructure && terraform state pull > ../state-backups/backup-$(shell date +%Y%m%d-%H%M%S).tfstate
 	@echo "✅ 状态文件已备份到 state-backups/"
 
+backup-state-test: ## 备份测试环境状态文件
+	@echo "💾 备份测试环境状态文件..."
+	@mkdir -p state-backups
+	cd infrastructure && terraform workspace select test && terraform state pull > ../state-backups/backup-test-$(shell date +%Y%m%d-%H%M%S).tfstate
+	@echo "✅ 测试环境状态文件已备份到 state-backups/"
+
+backup-state-prod: ## 备份生产环境状态文件
+	@echo "💾 备份生产环境状态文件..."
+	@mkdir -p state-backups
+	cd infrastructure && terraform workspace select prod && terraform state pull > ../state-backups/backup-prod-$(shell date +%Y%m%d-%H%M%S).tfstate
+	@echo "✅ 生产环境状态文件已备份到 state-backups/"
+
 # 🏗️ Terraform操作 (默认生产环境)
 init: ## 初始化Terraform (生产环境)
 	@echo "🔧 初始化生产环境..."
-	cd infrastructure && ../scripts/workspace.sh init prod
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh init prod
 
 plan: ## 查看Terraform执行计划 (生产环境)
 	@echo "📋 生成生产环境执行计划..."
-	cd infrastructure && ../scripts/workspace.sh plan prod
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh plan prod
 
 apply: ## 应用Terraform配置 (生产环境)
 	@echo "🚀 部署生产环境..."
-	cd infrastructure && ../scripts/workspace.sh apply prod
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh apply prod
 
 destroy: ## 销毁所有资源 (生产环境)
 	@echo "💥 销毁生产环境资源..."
-	cd infrastructure && ../scripts/workspace.sh destroy prod
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh destroy prod
 
 # 🧪 测试环境操作
 init-test: ## 初始化测试环境
 	@echo "🔧 初始化测试环境..."
-	cd infrastructure && ../scripts/workspace.sh init test
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh init test
 
 plan-test: ## 查看测试环境执行计划
 	@echo "📋 生成测试环境执行计划..."
-	cd infrastructure && ../scripts/workspace.sh plan test
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh plan test
 
 apply-test: ## 部署测试环境
 	@echo "🚀 部署测试环境..."
-	cd infrastructure && ../scripts/workspace.sh apply test
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh apply test
 
 destroy-test: ## 销毁测试环境资源
 	@echo "💥 销毁测试环境资源..."
-	cd infrastructure && ../scripts/workspace.sh destroy test
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh destroy test
 
 # 🔄 环境管理
 switch-prod: ## 切换到生产环境
 	@echo "🔄 切换到生产环境..."
-	cd infrastructure && ../scripts/workspace.sh switch prod
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh switch prod
 
 switch-test: ## 切换到测试环境
 	@echo "🔄 切换到测试环境..."
-	cd infrastructure && ../scripts/workspace.sh switch test
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh switch test
 
 list-envs: ## 列出所有环境
 	@echo "📋 环境列表:"
-	cd infrastructure && ../scripts/workspace.sh list
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh list
 
 env-status: ## 显示当前环境状态
 	@echo "📊 当前环境状态:"
-	cd infrastructure && ../scripts/workspace.sh status
+	cd infrastructure && ../scripts/02-infrastructure-setup/workspace.sh status
 
 # 🎨 前端操作
 build-frontend: ## 构建前端静态文件
@@ -91,7 +104,7 @@ dev-frontend: ## 启动前端开发服务器
 # 📦 依赖管理
 download-deps: ## 下载Go依赖包
 	@echo "📦 下载Go依赖包..."
-	./scripts/download-deps.sh
+	./scripts/01-environment-setup/download-deps.sh
 
 fix-deps: ## 修复Go依赖问题
 	@echo "🔧 修复Go依赖问题..."
@@ -186,20 +199,44 @@ status: ## 查看项目状态
 	@echo "状态备份:"
 	@if [ -d "state-backups" ]; then echo "  ✅ 存在状态备份 ($(shell ls state-backups/ 2>/dev/null | wc -l) 个文件)"; else echo "  ❌ 无状态备份"; fi
 
+status-test: ## 查看测试环境状态
+	@echo "📊 测试环境状态检查..."
+	@echo "基础设施状态:"
+	@if [ -d "infrastructure/.terraform" ]; then echo "  ✅ Terraform已初始化"; else echo "  ❌ Terraform未初始化"; fi
+	@echo "工作空间状态:"
+	@cd infrastructure && if terraform workspace list | grep -q "test"; then echo "  ✅ 测试环境工作空间存在"; else echo "  ❌ 测试环境工作空间不存在"; fi
+	@cd infrastructure && echo "  当前工作空间: $$(terraform workspace show)"
+
+status-prod: ## 查看生产环境状态
+	@echo "📊 生产环境状态检查..."
+	@echo "基础设施状态:"
+	@if [ -d "infrastructure/.terraform" ]; then echo "  ✅ Terraform已初始化"; else echo "  ❌ Terraform未初始化"; fi
+	@echo "工作空间状态:"
+	@cd infrastructure && if terraform workspace list | grep -q "prod"; then echo "  ✅ 生产环境工作空间存在"; else echo "  ❌ 生产环境工作空间不存在"; fi
+	@cd infrastructure && echo "  当前工作空间: $$(terraform workspace show)"
+
 # 🔧 开发工具
 fmt: ## 格式化代码
 	@echo "🔧 格式化代码..."
-	cd terraform && terraform fmt -recursive
+	cd infrastructure && terraform fmt -recursive
 	@for app in website-api user-service notification-service; do \
 		cd backend/$$app && go fmt ./... && cd ../..; \
 	done
 
 validate: ## 验证配置
 	@echo "✅ 验证配置..."
-	cd terraform && terraform validate
+	cd infrastructure && terraform validate
 	@for app in website-api user-service notification-service; do \
 		cd backend/$$app && go vet ./... && cd ../..; \
 	done
+
+validate-test: ## 验证测试环境配置
+	@echo "✅ 验证测试环境配置..."
+	cd infrastructure && terraform workspace select test && terraform validate -var-file=environments/test/terraform.tfvars
+
+validate-prod: ## 验证生产环境配置
+	@echo "✅ 验证生产环境配置..."
+	cd infrastructure && terraform workspace select prod && terraform validate -var-file=environments/prod/terraform.tfvars
 
 security-check: ## 安全检查
 	@echo "🔒 执行安全检查..."

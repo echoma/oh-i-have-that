@@ -28,8 +28,8 @@ output "repositories" {
   description = "镜像仓库信息"
   value = {
     for app_name, repo in tencentcloud_tcr_repository.apps : app_name => {
-      name = repo.repository_name
-      url  = "${local.registry_url}/${tencentcloud_tcr_namespace.main.name}/${repo.repository_name}"
+      name = repo.name
+      url  = "${local.registry_url}/${tencentcloud_tcr_namespace.main.name}/${repo.name}"
     }
   }
 }

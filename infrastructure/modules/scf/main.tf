@@ -44,67 +44,6 @@ resource "tencentcloud_scf_function" "main" {
   tags = var.tags
 }
 
-# 创建API网关服务
-resource "tencentcloud_api_gateway_service" "main" {
-  service_name = "${var.project_name}-${var.environment}-api"
-  protocol     = "http&https"
-  service_desc = "SCF网站API网关服务"
-  net_type     = ["OUTER"]
-  ip_version   = "IPv4"
-  
-  tags = var.tags
-}
-
-# 创建API网关API
-resource "tencentcloud_api_gateway_api" "main" {
-  service_id            = tencentcloud_api_gateway_service.main.id
-  api_name             = "oh-i-have-that-api"
-  api_desc             = "Oh I Have That网站API"
-  auth_type            = "NONE"
-  protocol             = "HTTP"
-  enable_cors          = true
-  request_config_path  = "/"
-  request_config_method = "ANY"
-  
-  request_parameters {
-    name          = "X-Forwarded-For"
-    position      = "HEADER"
-    type          = "string"
-    desc          = "客户端IP"
-    default_value = ""
-    required      = false
-  }
-  
-  service_config_type      = "SCF"
-  service_config_timeout   = var.timeout
-  service_config_product   = "SCF"
-  service_config_vpc_id    = var.vpc_id
-  service_config_scf_function_name      = tencentcloud_scf_function.main.name
-  service_config_scf_function_namespace = "default"
-  service_config_scf_function_qualifier = "$LATEST"
-  service_config_scf_function_type      = "Event"
-  
-  response_type    = "JSON"
-  response_success_example = jsonencode({
-    message = "success"
-  })
-  response_fail_example = jsonencode({
-    error = "error message"
-  })
-  
-  # 启用响应集成
-  service_config_scf_is_integrated_response = true
-}
-
-# 发布API网关服务
-resource "tencentcloud_api_gateway_service_release" "main" {
-  service_id       = tencentcloud_api_gateway_service.main.id
-  environment_name = "release"
-  release_desc     = "发布SCF网站API"
-  
-  depends_on = [tencentcloud_api_gateway_api.main]
-}
-
 # 创建CLS日志集
 resource "tencentcloud_cls_logset" "scf" {
   logset_name = "${var.project_name}-${var.environment}-scf-logs"
@@ -161,13 +100,3 @@ resource "tencentcloud_cls_index" "scf" {
   }
 }
 
-# 注意：SCF触发器需要通过腾讯云控制台手动配置，或使用其他方式创建
-# tencentcloud_scf_trigger 资源在当前provider版本中不可用
-
-# 本地变量
-locals {
-  api_gateway_url = "https://${tencentcloud_api_gateway_service.main.id}-${data.tencentcloud_user_info.current.app_id}.${var.region}.apigw.tencentcs.com/release"
-}
-
-# 获取当前用户信息
-data "tencentcloud_user_info" "current" {}

@@ -3,18 +3,11 @@
 
 terraform {
   # 使用腾讯云COS作为远程状态存储
+  # 注意：实际的backend配置通过 -backend-config 参数指定
+  # 测试环境: terraform init -backend-config=environments/test/backend.hcl
+  # 生产环境: terraform init -backend-config=environments/prod/backend.hcl
   backend "cos" {
-    # 存储桶配置 - 使用手工创建的存储桶
-    bucket = "tfstate-oihavethat-1256219290"
-    prefix = "oh-i-have-that/"
-    region = "ap-guangzhou"
-    
-    # 启用状态加密（推荐）
-    encrypt = true
-    
-    # 认证信息通过环境变量提供，不在代码中硬编码
-    # TENCENTCLOUD_SECRET_ID
-    # TENCENTCLOUD_SECRET_KEY
+    # 基础配置，具体值通过backend.hcl文件覆盖
   }
 }
 

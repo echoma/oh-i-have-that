@@ -28,6 +28,7 @@ module "cos" {
   bucket_name         = var.cos_bucket_name
   static_files_path   = var.static_files_path
   enable_auto_upload  = var.enable_auto_upload
+  app_id             = var.app_id
   
   tags = var.common_tags
 }
@@ -41,6 +42,7 @@ module "container_registry" {
   region      = var.region
   
   app_names = var.app_names
+  app_id    = var.app_id
   
   tags = var.common_tags
 }
@@ -62,7 +64,7 @@ module "docker" {
   depends_on = [module.container_registry]
 }
 
-# SCF模块 - 为每个应用创建函数
+# SCF模块
 module "scf" {
   source = "./modules/scf"
   
@@ -73,10 +75,35 @@ module "scf" {
   vpc_id    = module.network.vpc_id
   subnet_id = module.network.subnet_id
   
+  # SCF配置
+  function_name = var.scf_function_name
+  memory_size   = var.scf_memory_size
+  timeout       = var.scf_timeout
+  
   # 使用主要的website-api镜像
   image_uri = module.container_registry.image_uris["website-api"]
   
   tags = var.common_tags
   
   depends_on = [module.docker]
+}
+
+# CLB模块
+module "clb" {
+  source = "./modules/clb"
+  
+  project_name = var.project_name
+  environment  = var.environment
+  region      = var.region
+  
+  vpc_id    = module.network.vpc_id
+  subnet_id = module.network.subnet_id
+  
+  # SCF集成
+  scf_function_name = module.scf.function_name
+  cos_bucket_url    = module.cos.bucket_url
+  
+  tags = var.common_tags
+  
+  depends_on = [module.scf]
 }

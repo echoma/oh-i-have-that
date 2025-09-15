@@ -11,7 +11,7 @@ app_names = ["website-api", "user-service", "notification-service"]
 
 # SCF 配置
 scf_function_name = "website-handler"
-scf_memory_size   = 128  # 测试环境可以使用 64
+scf_memory_size   = 128  # 内存大小必须是128MB的倍数
 scf_timeout       = 30   # 测试环境可以使用 15
 
 # COS 配置

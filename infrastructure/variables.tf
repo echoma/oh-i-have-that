@@ -8,7 +8,7 @@ variable "project_name" {
 variable "environment" {
   description = "环境名称"
   type        = string
-  default     = "prod"
+  # 不设置默认值，强制通过tfvars文件指定
 }
 
 variable "region" {
@@ -17,13 +17,19 @@ variable "region" {
   default     = "ap-guangzhou"
 }
 
+variable "app_id" {
+  description = "腾讯云账户 App ID"
+  type        = string
+  default     = "1256219290"
+}
+
 variable "common_tags" {
   description = "通用标签"
   type        = map(string)
   default = {
-    Project     = "oh-i-have-that"
-    Environment = "prod"
-    ManagedBy   = "terraform"
+    Project   = "oh-i-have-that"
+    ManagedBy = "terraform"
+    # Environment 标签通过各环境的tfvars文件设置
   }
 }
 
@@ -71,3 +77,4 @@ variable "scf_timeout" {
   type        = number
   default     = 30
 }
+

@@ -14,9 +14,9 @@ output "scf_function_name" {
   value       = module.scf.function_name
 }
 
-output "scf_trigger_url" {
-  description = "SCF触发器URL"
-  value       = module.scf.trigger_url
+output "scf_function_id" {
+  description = "SCF函数ID"
+  value       = module.scf.function_id
 }
 
 output "vpc_id" {
@@ -27,6 +27,26 @@ output "vpc_id" {
 output "subnet_id" {
   description = "子网ID"
   value       = module.network.subnet_id
+}
+
+output "clb_id" {
+  description = "CLB实例ID"
+  value       = module.clb.clb_id
+}
+
+output "clb_vip" {
+  description = "CLB VIP地址"
+  value       = module.clb.clb_vip
+}
+
+output "api_url" {
+  description = "API访问URL (HTTP)"
+  value       = module.clb.api_url
+}
+
+output "api_url_https" {
+  description = "API访问URL (HTTPS)"
+  value       = module.clb.api_url_https
 }
 
 output "container_registry_url" {
