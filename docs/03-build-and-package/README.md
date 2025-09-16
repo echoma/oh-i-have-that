@@ -16,275 +16,72 @@
 - Docker镜像平台: `--platform linux/amd64`
 - 自动架构验证: 确保生成的二进制文件为x86-64格式
 
-## 🤖 自动化脚本（推荐）
+## 📚 构建流程文档
 
-**强烈推荐使用自动化脚本**，它们已经处理了M4芯片到腾讯云SCF x86-64的架构兼容性问题：
+本构建流程分为以下5个部分，请按顺序进行：
 
-### 1. 前端构建
-```bash
-# 查看所有选项
-./scripts/03-build-and-package/build-frontend.sh --help
+### 1️⃣ [前端编译及单元测试](./01-frontend-build-test.md)
+- 前端环境准备
+- 依赖安装和管理
+- 代码编译和构建
+- 单元测试执行
+- 构建结果验证
 
-# 常用构建命令
-./scripts/03-build-and-package/build-frontend.sh                    # 生产构建
-./scripts/03-build-and-package/build-frontend.sh --dev             # 开发构建
-./scripts/03-build-and-package/build-frontend.sh --clean --prod    # 清理后生产构建
-./scripts/03-build-and-package/build-frontend.sh --analyze         # 构建并分析包大小
-```
+### 2️⃣ [后端编译及单元测试](./02-backend-build-test.md)
+- 后端环境准备
+- Go模块依赖管理
+- 交叉编译配置
+- 单元测试和基准测试
+- 二进制文件验证
 
-### 2. 后端构建
-```bash
-# 查看所有选项
-./scripts/03-build-and-package/build-backend.sh --help
+### 3️⃣ [本地联合调试](./03-local-integration-debug.md)
+- 本地开发环境搭建
+- 前后端联合调试配置
+- API接口测试
+- 端到端测试
+- 调试工具和技巧
 
-# 常用构建命令
-./scripts/03-build-and-package/build-backend.sh                    # 构建所有服务
-./scripts/03-build-and-package/build-backend.sh website-api        # 只构建API服务
-./scripts/03-build-and-package/build-backend.sh --clean --verbose  # 清理后详细构建
-```
+### 4️⃣ [前端打包发布](./04-frontend-package-deploy.md)
+- 生产环境构建优化
+- 静态资源处理
+- CDN部署准备
+- 性能优化和压缩
+- 部署验证
 
-### 3. Docker镜像构建
-```bash
-# 查看所有选项
-./scripts/03-build-and-package/build-docker-images.sh --help
+### 5️⃣ [后端打包发布](./05-backend-package-deploy.md)
+- Docker镜像制作
+- 容器化配置
+- 镜像优化和安全
+- 容器注册表推送
+- 部署验证
 
-# 常用构建命令
-./scripts/03-build-and-package/build-docker-images.sh                          # 构建所有镜像
-./scripts/03-build-and-package/build-docker-images.sh website-api frontend     # 构建指定服务
-./scripts/03-build-and-package/build-docker-images.sh --tag=v1.0.0 --push      # 构建并推送
-```
+## 🤖 快速开始（自动化脚本）
 
-**脚本特性**:
-- ✅ 自动处理架构兼容性（ARM64 → x86-64）
-- ✅ 支持单个服务或批量构建
-- ✅ 提供详细的构建信息和错误处理
-- ✅ 支持多种构建选项和参数
-- ✅ 自动创建Dockerfile（如果不存在）
-- ✅ 构建结果验证和统计
-
----
-
-## 📋 手动构建步骤（备选方案）
-
-如果需要手动构建或了解构建细节，可以参考以下步骤：
-
-### 🎨 前端应用构建
-
-#### 1.1 准备前端环境
+如果你想快速完成所有构建步骤，可以使用我们提供的自动化脚本：
 
 ```bash
-cd frontend
+# 完整构建流程
+./scripts/03-build-and-package/build-all.sh
 
-# 安装依赖（如果尚未安装）
-npm install
-
-# 清理之前的构建
-rm -rf dist build
+# 或者分步执行
+./scripts/03-build-and-package/build-frontend.sh --prod
+./scripts/03-build-and-package/build-backend.sh --all
+./scripts/03-build-and-package/build-docker-images.sh --push
 ```
 
-#### 1.2 执行构建
+## 📊 构建流程图
 
-```bash
-# 生产环境构建
-npm run build
-
-# 开发环境构建（如果有相应脚本）
-npm run build:dev
-```
-
-#### 1.3 验证构建结果
-
-```bash
-# 检查构建输出
-ls -la dist/  # 或 build/
-
-# 查看构建统计
-du -sh dist/
-```
-
-### 🔧 后端服务构建
-
-**重要**: 必须使用交叉编译参数确保x86-64兼容性。
-
-#### 2.1 编译website-api服务
-
-```bash
-echo "🔨 编译website-api服务..."
-cd backend/website-api
-
-# 下载依赖
-go mod download
-
-# 交叉编译 - 针对腾讯云SCF x86-64架构
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o bin/website-api .
-
-# 验证架构
-file bin/website-api
-# 期望输出: ELF 64-bit LSB executable, x86-64
-
-cd ../..
-```
-
-#### 2.2 编译user-service服务
-
-```bash
-echo "🔨 编译user-service服务..."
-cd backend/user-service
-
-# 下载依赖
-go mod download
-
-# 交叉编译 - 针对腾讯云SCF x86-64架构
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o bin/user-service .
-
-# 验证架构
-file bin/user-service
-# 期望输出: ELF 64-bit LSB executable, x86-64
-
-cd ../..
-```
-
-#### 2.3 编译notification-service服务
-
-```bash
-echo "🔨 编译notification-service服务..."
-cd backend/notification-service
-
-# 下载依赖
-go mod download
-
-# 交叉编译 - 针对腾讯云SCF x86-64架构
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o bin/notification-service .
-
-# 验证架构
-file bin/notification-service
-# 期望输出: ELF 64-bit LSB executable, x86-64
-
-cd ../..
-```
-
-### 🐳 Docker镜像制作
-
-#### 3.1 准备Dockerfile
-
-为每个服务创建Dockerfile（如果不存在）：
-
-**后端服务Dockerfile示例** (backend/website-api/Dockerfile):
-```dockerfile
-# 多阶段构建 - 构建阶段
-FROM golang:1.21-alpine AS builder
-
-WORKDIR /app
-RUN apk add --no-cache git ca-certificates tzdata
-
-# 复制go mod文件
-COPY go.mod go.sum ./
-RUN go mod download
-
-# 复制源代码
-COPY . .
-
-# 交叉编译 - 针对腾讯云SCF x86-64架构
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o main .
-
-# 运行阶段
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates tzdata
-ENV TZ=Asia/Shanghai
-
-# 创建非root用户
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
-
-WORKDIR /app
-COPY --from=builder /app/main .
-RUN chown -R appuser:appgroup /app
-USER appuser
-
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-CMD ["./main"]
-```
-
-**前端Dockerfile示例** (frontend/Dockerfile):
-```dockerfile
-# 多阶段构建 - 构建阶段
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-# 运行阶段
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/nginx.conf 2>/dev/null || true
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-#### 3.2 构建镜像
-
-```bash
-# 构建后端服务镜像
-docker build --platform linux/amd64 -t website-api:latest -f backend/website-api/Dockerfile backend/website-api
-docker build --platform linux/amd64 -t user-service:latest -f backend/user-service/Dockerfile backend/user-service
-docker build --platform linux/amd64 -t notification-service:latest -f backend/notification-service/Dockerfile backend/notification-service
-
-# 构建前端镜像
-docker build --platform linux/amd64 -t frontend:latest -f frontend/Dockerfile frontend
-```
-
-#### 3.3 验证镜像
-
-```bash
-# 查看构建的镜像
-docker images
-
-# 验证镜像架构
-docker inspect website-api:latest | grep Architecture
-# 期望输出: "Architecture": "amd64"
-
-# 测试运行（可选）
-docker run --rm -p 8080:8080 website-api:latest
-```
-
-## ✅ 验证构建结果
-
-### 检查文件架构
-```bash
-# 检查Go二进制文件
-file backend/*/bin/*
-# 所有文件都应显示: ELF 64-bit LSB executable, x86-64
-
-# 检查Docker镜像架构
-docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
-```
-
-### 构建统计
-```bash
-# 前端构建大小
-du -sh frontend/dist/
-
-# 后端二进制文件大小
-ls -lh backend/*/bin/*
-
-# Docker镜像大小
-docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+```mermaid
+graph TD
+    A[开始] --> B[前端编译及测试]
+    A --> C[后端编译及测试]
+    B --> D[本地联合调试]
+    C --> D
+    D --> E[前端打包发布]
+    D --> F[后端打包发布]
+    E --> G[部署验证]
+    F --> G
+    G --> H[完成]
 ```
 
 ## 🚨 常见问题
