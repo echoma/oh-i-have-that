@@ -17,7 +17,7 @@ scf_timeout       = 30   # 测试环境可以使用 15
 # COS 配置
 cos_bucket_name     = ""  # 留空自动生成
 enable_auto_upload  = true
-static_files_path   = "../static-website/dist"
+static_files_path   = "../frontend/dist"
 
 # 标签配置
 common_tags = {

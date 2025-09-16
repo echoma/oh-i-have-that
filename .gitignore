@@ -53,7 +53,6 @@ yarn.lock
 # 构建输出
 dist/
 build/
-static-website/dist/
 apps/*/main
 
 # IDE 和编辑器

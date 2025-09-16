@@ -43,7 +43,7 @@ variable "cos_bucket_name" {
 variable "static_files_path" {
   description = "静态网站文件路径"
   type        = string
-  default     = "../static-website/dist"
+  default     = "../frontend/dist"
 }
 
 variable "enable_auto_upload" {
