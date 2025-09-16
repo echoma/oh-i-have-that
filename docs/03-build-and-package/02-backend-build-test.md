@@ -9,7 +9,7 @@
 ### 环境要求
 - Go >= 1.19
 - Git
-- Make（可选，用于Makefile）
+- 完成环境设置（参考 [环境设置文档](../01-environment-setup/README.md)）
 
 ### 验证环境
 ```bash
@@ -30,276 +30,143 @@ backend/
 │   ├── go.sum
 │   └── Dockerfile
 ├── notification-service/  # 通知服务
-│   ├── cmd/
-│   ├── internal/
-│   ├── pkg/
-│   ├── tests/
-│   ├── go.mod
-│   ├── go.sum
-│   └── Dockerfile
+│   └── [类似结构]
 └── website-api/          # 网站API服务
-    ├── cmd/
-    ├── internal/
-    ├── pkg/
-    ├── tests/
-    ├── go.mod
-    ├── go.sum
-    └── Dockerfile
+    └── [类似结构]
 ```
 
 ## ⚠️ 架构兼容性说明
 
 **重要**: 由于本地开发环境可能使用ARM64架构（如M1/M2/M4 Mac），而腾讯云SCF运行环境为x86-64架构，所有Go应用必须进行交叉编译。
 
-### 交叉编译参数
+交叉编译参数：`CGO_ENABLED=0 GOOS=linux GOARCH=amd64`
+
+## 🚀 使用自动化脚本
+
+项目提供了完善的后端构建脚本，位于 `scripts/03-build-and-package/build-backend.sh`。
+
+### 基本用法
+
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+# 完整的后端构建和测试流程（所有服务）
+./scripts/03-build-and-package/build-backend.sh
+
+# 构建特定服务
+./scripts/03-build-and-package/build-backend.sh website-api
+./scripts/03-build-and-package/build-backend.sh user-service notification-service
+
+# 清理后构建
+./scripts/03-build-and-package/build-backend.sh --clean --all
+
+# 仅运行测试
+./scripts/03-build-and-package/build-backend.sh --test
+
+# 本地架构构建（用于本地测试）
+./scripts/03-build-and-package/build-backend.sh --local
+
+# 查看所有可用选项
+./scripts/03-build-and-package/build-backend.sh --help
 ```
 
-## 🔧 依赖管理
+### 脚本功能特性
 
-### 1. 初始化Go模块（如果需要）
+- ✅ **自动依赖管理**: 检查并下载Go模块依赖
+- ✅ **交叉编译**: 自动进行Linux x86-64架构编译
+- ✅ **多服务支持**: 支持单个或批量构建服务
+- ✅ **架构验证**: 验证编译输出的目标架构
+- ✅ **测试集成**: 可选运行单元测试和基准测试
+- ✅ **构建分析**: 提供详细的构建结果和文件大小信息
+
+### 可用服务
+
+- `website-api` - 网站API服务
+- `user-service` - 用户服务  
+- `notification-service` - 通知服务
+
+## 🔧 手动操作（可选）
+
+如果需要手动执行特定步骤：
+
+### 1. 依赖管理
 ```bash
+# 进入服务目录
 cd backend/user-service
-go mod init user-service
-```
 
-### 2. 下载依赖
-```bash
-# 进入每个服务目录
-cd backend/user-service
+# 下载依赖
 go mod download
 go mod tidy
-
-cd ../notification-service
-go mod download
-go mod tidy
-
-cd ../website-api
-go mod download
-go mod tidy
-```
-
-### 3. 验证依赖
-```bash
 go mod verify
-go list -m all
 ```
 
-## 🏗️ 编译构建
-
-### 单个服务编译
-
-#### User Service
+### 2. 代码质量检查
 ```bash
-cd backend/user-service
+# Go代码检查
+go vet ./...
 
-# 本地架构编译（开发调试用）
-go build -o bin/user-service ./cmd/main.go
+# 代码格式化
+go fmt ./...
 
-# 交叉编译（部署用）
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/user-service-linux ./cmd/main.go
+# 静态分析（如果安装了golangci-lint）
+golangci-lint run
 ```
 
-#### Notification Service
+### 3. 单元测试
 ```bash
-cd backend/notification-service
-
-# 本地架构编译
-go build -o bin/notification-service ./cmd/main.go
-
-# 交叉编译
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/notification-service-linux ./cmd/main.go
-```
-
-#### Website API
-```bash
-cd backend/website-api
-
-# 本地架构编译
-go build -o bin/website-api ./cmd/main.go
-
-# 交叉编译
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/website-api-linux ./cmd/main.go
-```
-
-### 批量编译所有服务
-```bash
-# 使用自动化脚本
-./scripts/03-build-and-package/build-backend.sh --all
-
-# 或手动批量编译
-for service in user-service notification-service website-api; do
-    echo "编译 $service..."
-    cd backend/$service
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/${service}-linux ./cmd/main.go
-    cd ../..
-done
-```
-
-## 🧪 单元测试
-
-### 运行单个服务测试
-
-#### User Service 测试
-```bash
-cd backend/user-service
-
-# 运行所有测试
+# 运行测试
 go test ./...
 
-# 运行测试并显示覆盖率
+# 带覆盖率的测试
 go test -cover ./...
 
-# 生成详细覆盖率报告
+# 生成覆盖率报告
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out -o coverage.html
 ```
 
-#### Notification Service 测试
+### 4. 编译构建
 ```bash
-cd backend/notification-service
-go test ./...
-go test -cover ./...
-```
+# 本地架构编译（开发调试用）
+go build -o bin/user-service ./cmd/main.go
 
-#### Website API 测试
-```bash
-cd backend/website-api
-go test ./...
-go test -cover ./...
-```
-
-### 批量运行所有测试
-```bash
-# 使用自动化脚本
-./scripts/03-build-and-package/build-backend.sh --test-only
-
-# 或手动批量测试
-for service in user-service notification-service website-api; do
-    echo "测试 $service..."
-    cd backend/$service
-    go test -v ./...
-    cd ../..
-done
-```
-
-### 基准测试
-```bash
-# 运行基准测试
-go test -bench=. ./...
-
-# 运行基准测试并生成性能分析
-go test -bench=. -cpuprofile=cpu.prof -memprofile=mem.prof ./...
-```
-
-## 🔍 代码质量检查
-
-### Go Vet 检查
-```bash
-# 检查单个服务
-cd backend/user-service
-go vet ./...
-
-# 批量检查所有服务
-for service in user-service notification-service website-api; do
-    echo "检查 $service..."
-    cd backend/$service
-    go vet ./...
-    cd ../..
-done
-```
-
-### Go Fmt 格式化
-```bash
-# 格式化代码
-go fmt ./...
-
-# 检查格式化
-gofmt -l .
-```
-
-### 静态分析（如果安装了golangci-lint）
-```bash
-# 安装 golangci-lint
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-# 运行静态分析
-golangci-lint run
+# 交叉编译（部署用）
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/user-service ./cmd/main.go
 ```
 
 ## 📊 构建结果验证
 
-### 1. 检查二进制文件
+### 检查构建输出
 ```bash
-# 检查所有编译输出
+# 查看所有编译输出
 find backend/ -name "bin" -type d -exec ls -la {} \;
 
-# 验证架构兼容性
+# 检查文件大小
+find backend/ -name "bin/*" -exec ls -lh {} \;
+```
+
+### 架构验证
+```bash
+# 验证目标架构（需要file命令）
 for service in user-service notification-service website-api; do
-    if [ -f "backend/$service/bin/${service}-linux" ]; then
+    if [ -f "backend/$service/bin/$service" ]; then
         echo "检查 $service 架构:"
-        file "backend/$service/bin/${service}-linux"
+        file "backend/$service/bin/$service"
     fi
 done
 ```
 
-### 2. 验证二进制文件可执行性
-```bash
-# 测试本地二进制文件
-cd backend/user-service
-./bin/user-service --version 2>/dev/null || echo "需要在Linux环境中运行"
-```
+### 构建性能指标
 
-### 3. 检查文件大小
-```bash
-# 查看二进制文件大小
-find backend/ -name "*-linux" -exec ls -lh {} \;
-```
-
-## 🚀 自动化脚本
-
-使用项目提供的自动化脚本：
-
-```bash
-# 完整的后端构建和测试流程
-./scripts/03-build-and-package/build-backend.sh
-
-# 仅编译所有服务
-./scripts/03-build-and-package/build-backend.sh --build-only
-
-# 仅运行测试
-./scripts/03-build-and-package/build-backend.sh --test-only
-
-# 编译特定服务
-./scripts/03-build-and-package/build-backend.sh --service=user-service
-
-# 清理构建输出
-./scripts/03-build-and-package/build-backend.sh --clean
-```
-
-## 📈 性能优化
-
-### 编译优化
-```bash
-# 优化编译，减小二进制文件大小
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/service-linux ./cmd/main.go
-
-# 启用编译缓存
-export GOCACHE=/tmp/go-cache
-```
-
-### 并行编译
-```bash
-# 设置并行编译数量
-export GOMAXPROCS=4
-```
+自动化脚本会提供以下信息：
+- 📊 各服务二进制文件大小
+- 🏗️ 目标架构验证结果
+- ⏱️ 构建耗时
+- 🧪 测试结果（如果启用）
 
 ## 🐛 常见问题
 
 ### 依赖下载问题
 ```bash
-# 设置Go代理
+# 设置Go代理（中国用户）
 export GOPROXY=https://goproxy.cn,direct
 export GOSUMDB=sum.golang.google.cn
 
@@ -309,7 +176,7 @@ go clean -modcache
 
 ### 交叉编译问题
 ```bash
-# 确保设置正确的环境变量
+# 确保环境变量设置正确
 export CGO_ENABLED=0
 export GOOS=linux
 export GOARCH=amd64
@@ -327,16 +194,32 @@ go test -v -race ./...
 go clean -testcache
 ```
 
+### 内存不足
+```bash
+# 设置并行编译数量
+export GOMAXPROCS=2
+
+# 或使用脚本的本地构建模式
+./scripts/03-build-and-package/build-backend.sh --local
+```
+
 ## ✅ 验证清单
 
+- [ ] Go环境配置正确
 - [ ] 所有服务依赖下载成功
+- [ ] 代码质量检查通过
+- [ ] 单元测试全部通过
 - [ ] 本地架构编译成功
 - [ ] 交叉编译成功（Linux x86-64）
-- [ ] 所有单元测试通过
-- [ ] 代码质量检查通过
-- [ ] 二进制文件架构正确
-- [ ] 性能基准测试完成
+- [ ] 二进制文件架构验证通过
+- [ ] 构建输出大小合理
 
 ## 📝 下一步
 
 后端编译和测试完成后，继续进行 [本地联合调试](./03-local-integration-debug.md)。
+
+## 🔗 相关文档
+
+- [环境设置](../01-environment-setup/README.md)
+- [后端构建脚本源码](../../scripts/03-build-and-package/build-backend.sh)
+- [故障排除指南](./troubleshooting.md)

@@ -10,7 +10,7 @@
 - 完成前端编译和测试
 - 完成后端编译和测试
 - Docker Desktop（用于本地数据库等依赖服务）
-- Postman 或类似的API测试工具
+- curl 或 Postman（用于API测试）
 
 ### 验证前置条件
 ```bash
@@ -28,34 +28,35 @@ docker --version
 
 ### 1. 启动依赖服务
 
-#### 启动本地数据库（如果需要）
+#### 使用Docker启动数据库服务
 ```bash
-# 使用Docker Compose启动依赖服务
-docker-compose -f docker-compose.dev.yml up -d
-
-# 或手动启动MySQL/PostgreSQL
+# 启动MySQL（如果项目需要）
 docker run -d \
   --name dev-mysql \
   -e MYSQL_ROOT_PASSWORD=password \
   -e MYSQL_DATABASE=ohihavethat \
   -p 3306:3306 \
   mysql:8.0
-```
 
-#### 启动Redis（如果需要）
-```bash
+# 启动Redis（如果项目需要）
 docker run -d \
   --name dev-redis \
   -p 6379:6379 \
   redis:alpine
 ```
 
+#### 或使用Docker Compose（如果配置了）
+```bash
+# 如果项目根目录有docker-compose.dev.yml
+docker-compose -f docker-compose.dev.yml up -d
+```
+
 ### 2. 配置环境变量
 
-创建本地开发配置文件：
+创建本地开发配置：
 
 ```bash
-# 创建后端环境配置
+# 创建后端环境配置文件
 cat > backend/.env.local << EOF
 # 数据库配置
 DB_HOST=localhost
@@ -68,9 +69,10 @@ DB_NAME=ohihavethat
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# API配置
-API_PORT=8080
-API_HOST=0.0.0.0
+# 服务端口配置
+USER_SERVICE_PORT=8081
+NOTIFICATION_SERVICE_PORT=8082
+WEBSITE_API_PORT=8080
 
 # 调试模式
 DEBUG=true
@@ -80,65 +82,84 @@ EOF
 
 ### 3. 启动后端服务
 
-#### 启动 User Service
+#### 方式一：手动启动各服务
 ```bash
+# 启动User Service
 cd backend/user-service
-
-# 加载环境变量
 export $(cat ../.env.local | xargs)
-
-# 启动服务
 ./bin/user-service &
 USER_SERVICE_PID=$!
-echo "User Service PID: $USER_SERVICE_PID"
-```
 
-#### 启动 Notification Service
-```bash
-cd backend/notification-service
-
-# 启动服务
+# 启动Notification Service  
+cd ../notification-service
 ./bin/notification-service &
 NOTIFICATION_SERVICE_PID=$!
-echo "Notification Service PID: $NOTIFICATION_SERVICE_PID"
-```
 
-#### 启动 Website API
-```bash
-cd backend/website-api
-
-# 启动服务
+# 启动Website API
+cd ../website-api
 ./bin/website-api &
 WEBSITE_API_PID=$!
-echo "Website API PID: $WEBSITE_API_PID"
+
+echo "服务PID: User=$USER_SERVICE_PID, Notification=$NOTIFICATION_SERVICE_PID, API=$WEBSITE_API_PID"
 ```
 
-### 4. 启动前端开发服务器
+#### 方式二：使用启动脚本（推荐）
+```bash
+# 如果项目有启动脚本
+./scripts/dev/start-backend-services.sh
+
+# 或创建简单的启动脚本
+cat > start-local-backend.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "启动后端服务..."
+
+# 加载环境变量
+export $(cat backend/.env.local | xargs)
+
+# 启动服务
+cd backend/user-service && ./bin/user-service &
+cd ../notification-service && ./bin/notification-service &  
+cd ../website-api && ./bin/website-api &
+
+echo "所有后端服务已启动"
+echo "User Service: http://localhost:8081"
+echo "Notification Service: http://localhost:8082"
+echo "Website API: http://localhost:8080"
+EOF
+
+chmod +x start-local-backend.sh
+./start-local-backend.sh
+```
+
+### 4. 启动前端服务
 
 ```bash
 cd frontend
 
-# 启动开发服务器
-npm run dev &
-FRONTEND_PID=$!
-echo "Frontend PID: $FRONTEND_PID"
+# 方式一：开发服务器（如果支持）
+npm run dev
 
-# 或使用http-server提供静态文件
-npx http-server dist/ -p 3000 -c-1 &
+# 方式二：静态文件服务器
+npx http-server dist/ -p 3000 -c-1
+
+# 方式三：使用Python（如果没有Node.js服务器）
+cd dist && python3 -m http.server 3000
 ```
 
 ## 🔗 服务连接配置
 
 ### 前端API配置
 
-更新前端配置以连接本地后端：
+确保前端正确配置API端点：
 
 ```javascript
-// frontend/src/config/api.js
+// frontend/src/config/api.js 或类似配置文件
 const API_CONFIG = {
   development: {
     USER_SERVICE: 'http://localhost:8081',
-    NOTIFICATION_SERVICE: 'http://localhost:8082',
+    NOTIFICATION_SERVICE: 'http://localhost:8082', 
     WEBSITE_API: 'http://localhost:8080'
   },
   production: {
@@ -151,369 +172,232 @@ const API_CONFIG = {
 export default API_CONFIG[process.env.NODE_ENV || 'development'];
 ```
 
-### 跨域配置
+### 跨域问题解决
 
-如果遇到CORS问题，在后端服务中添加CORS头：
+如果遇到CORS问题，可以：
 
-```go
-// 在Go服务中添加CORS中间件
-func corsMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        
-        if r.Method == "OPTIONS" {
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-        
-        next.ServeHTTP(w, r)
-    })
-}
+1. **在后端添加CORS头**（推荐）
+2. **使用代理服务器**
+3. **浏览器禁用安全检查**（仅开发环境）
+
+```bash
+# 临时禁用Chrome CORS检查（仅开发用）
+open -n -a /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --args --user-data-dir="/tmp/chrome_dev_test" --disable-web-security
 ```
 
 ## 🧪 API接口测试
 
-### 1. 健康检查测试
+### 1. 健康检查
 
 ```bash
-# 测试各服务健康状态
-curl http://localhost:8080/health
-curl http://localhost:8081/health
-curl http://localhost:8082/health
+# 测试各服务是否正常运行
+curl -f http://localhost:8080/health || echo "Website API 未响应"
+curl -f http://localhost:8081/health || echo "User Service 未响应"  
+curl -f http://localhost:8082/health || echo "Notification Service 未响应"
 ```
 
-### 2. 用户服务API测试
+### 2. 基础API测试
 
 ```bash
-# 创建用户
-curl -X POST http://localhost:8081/api/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-
-# 获取用户信息
-curl http://localhost:8081/api/users/1
-
-# 用户登录
-curl -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-```
-
-### 3. 通知服务API测试
-
-```bash
-# 发送通知
-curl -X POST http://localhost:8082/api/notifications \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "user_id": 1,
-    "message": "测试通知",
-    "type": "info"
-  }'
-
-# 获取用户通知
-curl http://localhost:8082/api/notifications/user/1 \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-### 4. 网站API测试
-
-```bash
-# 获取网站信息
+# 测试网站API
 curl http://localhost:8080/api/info
 
-# 搜索功能
-curl "http://localhost:8080/api/search?q=test"
+# 测试用户服务（示例）
+curl -X POST http://localhost:8081/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "email": "test@example.com"}'
 
-# 上传文件
-curl -X POST http://localhost:8080/api/upload \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@test.jpg"
+# 测试通知服务（示例）
+curl http://localhost:8082/api/notifications
 ```
 
-## 🔍 端到端测试
+### 3. 端到端流程测试
 
-### 1. 用户注册流程测试
+创建简单的端到端测试脚本：
 
 ```bash
 #!/bin/bash
-# e2e-test-user-registration.sh
+# e2e-test.sh
 
-echo "=== 用户注册端到端测试 ==="
+echo "=== 端到端测试 ==="
 
-# 1. 注册新用户
-echo "1. 注册新用户..."
-REGISTER_RESPONSE=$(curl -s -X POST http://localhost:8081/api/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "e2etest",
-    "email": "e2e@example.com",
-    "password": "password123"
-  }')
+# 1. 健康检查
+echo "1. 健康检查..."
+curl -f http://localhost:8080/health && echo "✅ Website API OK" || echo "❌ Website API Failed"
+curl -f http://localhost:8081/health && echo "✅ User Service OK" || echo "❌ User Service Failed"
+curl -f http://localhost:8082/health && echo "✅ Notification Service OK" || echo "❌ Notification Service Failed"
 
-echo "注册响应: $REGISTER_RESPONSE"
+# 2. 前端访问测试
+echo "2. 前端访问测试..."
+curl -f http://localhost:3000 && echo "✅ Frontend OK" || echo "❌ Frontend Failed"
 
-# 2. 用户登录
-echo "2. 用户登录..."
-LOGIN_RESPONSE=$(curl -s -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "e2e@example.com",
-    "password": "password123"
-  }')
+# 3. API集成测试
+echo "3. API集成测试..."
+# 根据实际API添加测试
 
-TOKEN=$(echo $LOGIN_RESPONSE | jq -r '.token')
-echo "登录成功，Token: $TOKEN"
-
-# 3. 发送欢迎通知
-echo "3. 发送欢迎通知..."
-NOTIFICATION_RESPONSE=$(curl -s -X POST http://localhost:8082/api/notifications \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{
-    "user_id": 1,
-    "message": "欢迎注册！",
-    "type": "welcome"
-  }')
-
-echo "通知响应: $NOTIFICATION_RESPONSE"
-
-echo "=== 端到端测试完成 ==="
-```
-
-### 2. 前端集成测试
-
-```javascript
-// frontend/tests/e2e/user-flow.test.js
-describe('用户流程端到端测试', () => {
-  test('用户注册和登录流程', async () => {
-    // 访问注册页面
-    await page.goto('http://localhost:3000/register');
-    
-    // 填写注册表单
-    await page.fill('#username', 'e2etest');
-    await page.fill('#email', 'e2e@example.com');
-    await page.fill('#password', 'password123');
-    
-    // 提交注册
-    await page.click('#register-button');
-    
-    // 验证注册成功
-    await expect(page.locator('.success-message')).toBeVisible();
-    
-    // 跳转到登录页面
-    await page.goto('http://localhost:3000/login');
-    
-    // 登录
-    await page.fill('#email', 'e2e@example.com');
-    await page.fill('#password', 'password123');
-    await page.click('#login-button');
-    
-    // 验证登录成功
-    await expect(page.locator('.dashboard')).toBeVisible();
-  });
-});
+echo "=== 测试完成 ==="
 ```
 
 ## 🛠️ 调试工具和技巧
 
-### 1. Go服务调试
+### 1. 日志查看
 
-#### 使用Delve调试器
 ```bash
-# 安装Delve
-go install github.com/go-delve/delve/cmd/dlv@latest
+# 查看服务日志（如果服务输出到文件）
+tail -f backend/user-service/logs/app.log
+tail -f backend/notification-service/logs/app.log
+tail -f backend/website-api/logs/app.log
 
-# 调试用户服务
-cd backend/user-service
-dlv debug ./cmd/main.go -- --config=config.yaml
+# 查看Docker容器日志
+docker logs dev-mysql
+docker logs dev-redis
 ```
 
-#### 添加调试日志
-```go
-// 在Go代码中添加调试日志
-import "log"
+### 2. 进程管理
 
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-    log.Printf("DEBUG: 收到请求 %s %s", r.Method, r.URL.Path)
-    log.Printf("DEBUG: 请求头: %+v", r.Header)
-    
-    // 处理请求...
-    
-    log.Printf("DEBUG: 响应状态: %d", statusCode)
-}
-```
+```bash
+# 查看运行的服务进程
+ps aux | grep -E "(user-service|notification-service|website-api)"
 
-### 2. 前端调试
+# 停止所有后端服务
+pkill -f user-service
+pkill -f notification-service  
+pkill -f website-api
 
-#### 浏览器开发者工具
-- 使用Network标签监控API请求
-- 使用Console查看JavaScript错误
-- 使用Sources进行断点调试
-
-#### 前端日志
-```javascript
-// 添加详细的前端日志
-console.group('API请求');
-console.log('URL:', url);
-console.log('方法:', method);
-console.log('数据:', data);
-console.groupEnd();
-
-// 使用try-catch捕获错误
-try {
-  const response = await fetch(url, options);
-  console.log('响应:', response);
-} catch (error) {
-  console.error('请求失败:', error);
-}
+# 或使用PID停止
+kill $USER_SERVICE_PID $NOTIFICATION_SERVICE_PID $WEBSITE_API_PID
 ```
 
 ### 3. 网络调试
 
-#### 使用tcpdump监控网络流量
 ```bash
-# 监控本地API流量
-sudo tcpdump -i lo0 -A -s 0 'port 8080'
-```
+# 检查端口占用
+lsof -i :8080
+lsof -i :8081
+lsof -i :8082
+lsof -i :3000
 
-#### 使用Wireshark分析
-- 启动Wireshark
-- 监听loopback接口
-- 过滤HTTP流量
+# 检查网络连接
+netstat -an | grep -E "(8080|8081|8082|3000)"
+```
 
 ## 📊 性能监控
 
-### 1. 后端性能监控
+### 简单的性能监控
 
-```go
-// 添加性能监控中间件
-func performanceMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        start := time.Now()
-        
-        next.ServeHTTP(w, r)
-        
-        duration := time.Since(start)
-        log.Printf("请求 %s %s 耗时: %v", r.Method, r.URL.Path, duration)
-    })
-}
+```bash
+# 监控API响应时间
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8080/api/info
+
+# curl-format.txt 内容：
+cat > curl-format.txt << 'EOF'
+     time_namelookup:  %{time_namelookup}\n
+        time_connect:  %{time_connect}\n
+     time_appconnect:  %{time_appconnect}\n
+    time_pretransfer:  %{time_pretransfer}\n
+       time_redirect:  %{time_redirect}\n
+  time_starttransfer:  %{time_starttransfer}\n
+                     ----------\n
+          time_total:  %{time_total}\n
+EOF
 ```
 
-### 2. 前端性能监控
+## 🚀 自动化脚本
 
-```javascript
-// 监控API请求性能
-const performanceMonitor = {
-  async request(url, options) {
-    const start = performance.now();
-    
-    try {
-      const response = await fetch(url, options);
-      const end = performance.now();
-      
-      console.log(`API请求 ${url} 耗时: ${end - start}ms`);
-      return response;
-    } catch (error) {
-      const end = performance.now();
-      console.error(`API请求 ${url} 失败，耗时: ${end - start}ms`, error);
-      throw error;
-    }
-  }
-};
-```
-
-## 🚀 自动化调试脚本
+创建完整的本地开发环境启动脚本：
 
 ```bash
 #!/bin/bash
-# scripts/dev/start-local-env.sh
+# start-local-dev.sh
+
+set -e
 
 echo "=== 启动本地开发环境 ==="
 
-# 1. 启动依赖服务
-echo "启动依赖服务..."
-docker-compose -f docker-compose.dev.yml up -d
+# 1. 检查前置条件
+echo "1. 检查前置条件..."
+command -v docker >/dev/null 2>&1 || { echo "Docker 未安装"; exit 1; }
+[ -d "frontend/dist" ] || { echo "前端未构建"; exit 1; }
+[ -f "backend/user-service/bin/user-service" ] || { echo "后端未构建"; exit 1; }
 
-# 2. 等待服务就绪
-echo "等待数据库就绪..."
+# 2. 启动依赖服务
+echo "2. 启动依赖服务..."
+docker run -d --name dev-mysql -e MYSQL_ROOT_PASSWORD=password -p 3306:3306 mysql:8.0 2>/dev/null || echo "MySQL已运行"
+docker run -d --name dev-redis -p 6379:6379 redis:alpine 2>/dev/null || echo "Redis已运行"
+
+# 3. 等待数据库启动
+echo "3. 等待数据库启动..."
 sleep 10
 
-# 3. 启动后端服务
-echo "启动后端服务..."
-cd backend
-./scripts/start-all-services.sh &
+# 4. 启动后端服务
+echo "4. 启动后端服务..."
+./start-local-backend.sh
 
-# 4. 启动前端服务
-echo "启动前端服务..."
-cd frontend
-npm run dev &
+# 5. 启动前端服务
+echo "5. 启动前端服务..."
+cd frontend && npx http-server dist/ -p 3000 -c-1 &
+cd ..
 
-# 5. 等待服务启动
+# 6. 等待服务启动
 sleep 5
 
-# 6. 运行健康检查
-echo "运行健康检查..."
-./scripts/dev/health-check.sh
+# 7. 运行健康检查
+echo "6. 运行健康检查..."
+./e2e-test.sh
 
 echo "=== 本地开发环境启动完成 ==="
 echo "前端地址: http://localhost:3000"
 echo "API地址: http://localhost:8080"
+echo ""
+echo "停止环境: ./stop-local-dev.sh"
 ```
 
 ## 🐛 常见问题
 
 ### 端口冲突
 ```bash
-# 查找占用端口的进程
-lsof -i :8080
-lsof -i :3000
-
-# 杀死进程
-kill -9 PID
+# 查找并杀死占用端口的进程
+lsof -ti:8080 | xargs kill -9
+lsof -ti:3000 | xargs kill -9
 ```
 
-### 服务无法连接
+### 服务启动失败
 ```bash
-# 检查服务状态
-ps aux | grep user-service
-ps aux | grep notification-service
+# 检查二进制文件权限
+chmod +x backend/*/bin/*
 
-# 检查端口监听
-netstat -tlnp | grep :8080
+# 检查配置文件
+cat backend/.env.local
+
+# 检查依赖服务
+docker ps
 ```
 
 ### 数据库连接问题
 ```bash
 # 测试数据库连接
-mysql -h localhost -P 3306 -u root -p
+docker exec -it dev-mysql mysql -u root -ppassword -e "SHOW DATABASES;"
 
-# 检查Docker容器状态
-docker ps
-docker logs dev-mysql
+# 重启数据库
+docker restart dev-mysql
 ```
 
 ## ✅ 验证清单
 
-- [ ] 依赖服务启动成功
-- [ ] 所有后端服务运行正常
-- [ ] 前端开发服务器启动
-- [ ] API接口测试通过
-- [ ] 端到端测试通过
-- [ ] 跨域配置正确
-- [ ] 调试工具配置完成
-- [ ] 性能监控正常
+- [ ] 依赖服务（MySQL/Redis）启动成功
+- [ ] 所有后端服务正常运行
+- [ ] 前端服务正常访问
+- [ ] API健康检查通过
+- [ ] 前后端通信正常
+- [ ] 跨域问题已解决
+- [ ] 基础功能测试通过
 
 ## 📝 下一步
 
 本地联合调试完成后，继续进行 [前端打包发布](./04-frontend-package-deploy.md)。
+
+## 🔗 相关文档
+
+- [前端编译测试](./01-frontend-build-test.md)
+- [后端编译测试](./02-backend-build-test.md)
+- [故障排除指南](./troubleshooting.md)
