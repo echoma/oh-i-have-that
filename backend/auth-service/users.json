@@ -1,0 +1,45 @@
+{
+  "users": [
+    {
+      "id": "user_001",
+      "email": "admin@example.com",
+      "password": "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+      "username": "管理员",
+      "role": "admin",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "lastLogin": null,
+      "active": true
+    },
+    {
+      "id": "user_002", 
+      "email": "zhangsan@example.com",
+      "password": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+      "username": "张三",
+      "role": "user",
+      "createdAt": "2024-01-02T00:00:00Z",
+      "lastLogin": null,
+      "active": true
+    },
+    {
+      "id": "user_003",
+      "email": "lisi@example.com", 
+      "password": "aef3e0c7e9f8b2c5d4a1b6e8f9c2d5a8b1c4e7f0a3b6c9d2e5f8a1b4c7e0f3a6",
+      "username": "李四",
+      "role": "user",
+      "createdAt": "2024-01-03T00:00:00Z",
+      "lastLogin": null,
+      "active": true
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2024-01-01T00:00:00Z",
+    "totalUsers": 3,
+    "description": "用户账户数据存储文件，密码已使用SHA256加密"
+  },
+  "passwordHints": {
+    "admin@example.com": "password",
+    "zhangsan@example.com": "secret123", 
+    "lisi@example.com": "hello456"
+  }
+}

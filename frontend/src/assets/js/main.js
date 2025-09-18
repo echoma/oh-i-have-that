@@ -98,17 +98,45 @@ class SCFWebsite {
     }
 
     async testUserInfo() {
-        return this.makeApiRequest('/api/v1/user/user1');
+        // 使用认证请求获取用户信息
+        try {
+            const response = await authManager.authenticatedFetch(`${this.apiBaseUrl}/api/v1/user/info`);
+            const data = await response.json();
+            
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.textContent = JSON.stringify(data, null, 2);
+            resultDiv.style.color = response.ok ? '#2ecc71' : '#e74c3c';
+            
+            return data;
+        } catch (error) {
+            console.error('获取用户信息失败:', error);
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.textContent = `请求失败: ${error.message}`;
+            resultDiv.style.color = '#e74c3c';
+            throw error;
+        }
     }
 
     async testAuth() {
-        return this.makeApiRequest('/api/v1/auth/check', {
-            method: 'POST',
-            body: {
-                token: 'token_user1',
-                userId: 'user1'
+        // 检查当前认证状态
+        try {
+            const isAuth = await authManager.checkAuthStatus();
+            const resultDiv = document.getElementById('api-result');
+            
+            if (isAuth) {
+                const user = authManager.getCurrentUser();
+                resultDiv.textContent = `认证成功\n用户: ${user.username}\nID: ${user.id}`;
+                resultDiv.style.color = '#2ecc71';
+            } else {
+                resultDiv.textContent = '用户未认证';
+                resultDiv.style.color = '#e74c3c';
             }
-        });
+        } catch (error) {
+            console.error('认证检查失败:', error);
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.textContent = `认证检查失败: ${error.message}`;
+            resultDiv.style.color = '#e74c3c';
+        }
     }
 
     async testStats() {

@@ -10,8 +10,15 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🚀 Oh I Have That</h1>
-            <p class="subtitle">基于腾讯云SCF和COS构建的现代化Serverless网站</p>
+            <div class="header-content">
+                <div class="logo-section">
+                    <h1>🚀 Oh I Have That</h1>
+                    <p class="subtitle">基于腾讯云SCF和COS构建的现代化Serverless网站</p>
+                </div>
+                <div id="userInfo" class="user-info-section" style="display: none;">
+                    <!-- 用户信息将通过JavaScript动态插入 -->
+                </div>
+            </div>
         </header>
 
         <main class="main-content">
@@ -83,6 +90,8 @@
         </footer>
     </div>
 
+    <!-- 加载身份验证脚本 -->
+    <script src="assets/js/auth.js"></script>
     <script src="assets/js/main.js"></script>
 </body>
 </html>
