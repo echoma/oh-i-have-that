@@ -1,8 +1,8 @@
-# 1️⃣ 前端编译及单元测试
+# 1️⃣ 前端编译及构建
 
 ## 📋 概述
 
-本文档介绍如何编译前端应用并执行单元测试。前端项目使用现代JavaScript/TypeScript技术栈，支持开发和生产环境的不同构建配置。
+本文档介绍如何编译前端静态网站项目。前端项目是一个简单的静态网站，包含HTML、CSS、JavaScript等静态资源，支持开发和生产环境的不同构建配置。
 
 ## 🛠️ 前置条件
 
@@ -60,8 +60,8 @@ frontend/
 
 - ✅ **自动依赖管理**: 检查并安装必要的依赖
 - ✅ **多种构建模式**: 支持开发和生产环境构建
-- ✅ **代码质量检查**: 集成 ESLint 和格式化检查
-- ✅ **构建优化**: 自动进行代码分割和资源压缩
+- ✅ **静态资源处理**: 自动处理CSS、JS、图片等静态资源
+- ✅ **构建优化**: 自动进行资源压缩和优化
 - ✅ **构建分析**: 提供详细的构建结果分析
 - ✅ **预览服务**: 构建后可选启动预览服务器
 
@@ -75,25 +75,35 @@ cd frontend
 npm install
 ```
 
-### 2. 代码质量检查
-```bash
-npm run lint
-npm run format  # 如果配置了格式化
-```
-
-### 3. 单元测试
-```bash
-npm test
-npm run test:coverage  # 生成覆盖率报告
-```
-
-### 4. 构建应用
+### 2. 构建应用
 ```bash
 # 开发环境构建
-npm run build:dev
+npm run build
 
 # 生产环境构建
 npm run build:prod
+
+# 开发模式（构建+启动服务器）
+npm run dev
+
+# 启动预览服务器
+npm run serve
+
+# 清理构建目录
+npm run clean
+
+# 监听文件变化自动构建
+npm run watch
+```
+
+### 3. 验证构建结果
+```bash
+# 检查构建输出
+ls -la frontend/dist/
+
+# 验证主要文件
+[ -f "frontend/dist/index.html" ] && echo "✅ index.html 存在" || echo "❌ index.html 缺失"
+[ -d "frontend/dist/assets" ] && echo "✅ assets 目录存在" || echo "❌ assets 目录缺失"
 ```
 
 ## 📊 构建结果验证
@@ -155,11 +165,11 @@ lsof -i :3000
 
 - [ ] Node.js 和 npm 环境正常
 - [ ] 依赖安装成功
-- [ ] 代码质量检查通过
-- [ ] 单元测试全部通过
 - [ ] 开发环境构建成功
 - [ ] 生产环境构建成功
 - [ ] 构建输出文件完整
+- [ ] 静态资源路径正确
+- [ ] 预览服务器正常启动
 - [ ] 构建大小合理
 
 ## 📝 下一步
