@@ -15,9 +15,9 @@ resource "random_string" "bucket_suffix" {
   upper   = false
 }
 
-# 创建COS存储桶
+# 创建静态资源存储桶（公开访问）
 resource "tencentcloud_cos_bucket" "website" {
-  bucket = var.bucket_name != "" ? var.bucket_name : "oihavethat-${var.environment}-${random_string.bucket_suffix.result}-${local.app_id}"
+  bucket = var.static_bucket_name != "" ? var.static_bucket_name : "oihavethat-static-${var.environment}-${random_string.bucket_suffix.result}-${local.app_id}"
   acl    = "public-read"
   
   # 启用静态网站托管
@@ -38,7 +38,27 @@ resource "tencentcloud_cos_bucket" "website" {
   # tags = var.tags
 }
 
-# 创建存储桶策略，允许公开读取
+# 创建数据存储桶（私有访问）
+resource "tencentcloud_cos_bucket" "data" {
+  bucket = var.data_bucket_name != "" ? var.data_bucket_name : "oihavethat-data-${var.environment}-${random_string.bucket_suffix.result}-${local.app_id}"
+  acl    = "private"
+  
+  # 数据桶的跨域配置（仅允许后端应用访问）
+  cors_rules {
+    allowed_origins = var.backend_allowed_origins
+    allowed_methods = ["GET", "POST", "PUT", "DELETE", "HEAD"]
+    allowed_headers = ["*"]
+    max_age_seconds = 300
+  }
+  
+  # 启用版本控制（数据安全）
+  versioning_enable = true
+  
+  # 移除标签以避免保留标签前缀问题
+  # tags = var.tags
+}
+
+# 创建静态资源桶策略，允许公开读取
 resource "tencentcloud_cos_bucket_policy" "website" {
   bucket = tencentcloud_cos_bucket.website.bucket
   
@@ -54,7 +74,35 @@ resource "tencentcloud_cos_bucket_policy" "website" {
           "cos:GetObject"
         ]
         resource = [
-          "qcs::cos:${var.region}:uid/${local.app_id}:${tencentcloud_cos_bucket.website.bucket}/*"
+          "${tencentcloud_cos_bucket.website.bucket}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# 创建数据存储桶策略，仅允许后端应用访问
+resource "tencentcloud_cos_bucket_policy" "data" {
+  bucket = tencentcloud_cos_bucket.data.bucket
+  
+  policy = jsonencode({
+    version = "2.0"
+    statement = [
+      {
+        principal = {
+          qcs = var.backend_service_principals
+        }
+        effect = "allow"
+        action = [
+          "cos:GetObject",
+          "cos:PutObject",
+          "cos:DeleteObject",
+          "cos:GetObjectVersion",
+          "cos:ListBucket"
+        ]
+        resource = [
+          "${tencentcloud_cos_bucket.data.bucket}",
+          "${tencentcloud_cos_bucket.data.bucket}/*"
         ]
       }
     ]
@@ -146,4 +194,35 @@ resource "tencentcloud_cos_bucket_object" "default_error" {
   content_type = "text/html; charset=utf-8"
   
   depends_on = [tencentcloud_cos_bucket_policy.website]
+}
+
+# 创建空的用户数据文件到数据存储桶（将由用户管理工具管理）
+resource "tencentcloud_cos_bucket_object" "users_data" {
+  bucket = tencentcloud_cos_bucket.data.bucket
+  key    = "auth/users.json"
+  content = jsonencode([])
+  acl    = "private"
+  content_type = "application/json; charset=utf-8"
+  
+  depends_on = [tencentcloud_cos_bucket_policy.data]
+}
+
+# 创建应用配置文件到数据存储桶
+resource "tencentcloud_cos_bucket_object" "app_config" {
+  bucket = tencentcloud_cos_bucket.data.bucket
+  key    = "config/app.json"
+  content = jsonencode({
+    project_name = var.project_name
+    environment  = var.environment
+    version      = "1.0.0"
+    created_at   = timestamp()
+    buckets = {
+      static = tencentcloud_cos_bucket.website.bucket
+      data   = tencentcloud_cos_bucket.data.bucket
+    }
+  })
+  acl    = "private"
+  content_type = "application/json; charset=utf-8"
+  
+  depends_on = [tencentcloud_cos_bucket_policy.data]
 }

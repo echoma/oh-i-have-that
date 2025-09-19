@@ -14,10 +14,28 @@ variable "region" {
   type        = string
 }
 
-variable "bucket_name" {
-  description = "COS存储桶名称，如果为空则自动生成"
+variable "static_bucket_name" {
+  description = "静态资源存储桶名称，如果为空则自动生成"
   type        = string
   default     = ""
+}
+
+variable "data_bucket_name" {
+  description = "数据存储桶名称，如果为空则自动生成"
+  type        = string
+  default     = ""
+}
+
+variable "backend_allowed_origins" {
+  description = "允许访问数据桶的后端应用域名"
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "backend_service_principals" {
+  description = "允许访问数据桶的后端服务主体"
+  type        = list(string)
+  default     = ["qcs::cam::anyone:anyone"]  # 在生产环境中应该限制为特定的服务角色
 }
 
 variable "static_files_path" {

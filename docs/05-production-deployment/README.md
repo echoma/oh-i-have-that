@@ -16,6 +16,8 @@
 - 测试环境验证通过
 - 生产环境规划完成
 - 域名和SSL证书准备就绪
+- 生产环境COS访问凭证已配置
+- 生产环境用户账户规划完成
 
 ## 🚀 自动化生产部署（推荐）
 
@@ -58,6 +60,10 @@
 export TENCENTCLOUD_SECRET_ID="your-secret-id"
 export TENCENTCLOUD_SECRET_KEY="your-secret-key"
 export PROD_DOMAIN="your-production-domain.com"  # 可选
+export COS_DATA_BUCKET="your-prod-data-bucket"
+export COS_REGION="ap-guangzhou"
+export COS_SECRET_ID="your-secret-id"
+export COS_SECRET_KEY="your-secret-key"
 ```
 
 **安全注意事项**:
@@ -169,6 +175,56 @@ cd infrastructure
 
 cd ..
 ```
+
+## 👥 生产环境用户数据初始化
+
+在部署应用前，需要初始化生产环境的用户数据：
+
+```bash
+echo "👥 初始化生产环境用户数据..."
+
+# 进入用户管理工具目录
+cd tools/user-manager
+
+# 设置生产环境变量
+export COS_DATA_BUCKET="your-prod-data-bucket"
+export COS_REGION="ap-guangzhou"
+export COS_SECRET_ID="$TENCENTCLOUD_SECRET_ID"
+export COS_SECRET_KEY="$TENCENTCLOUD_SECRET_KEY"
+
+# 初始化用户数据文件
+./user_manager.sh init
+
+# 添加生产管理员账户
+echo "添加生产管理员账户..."
+echo "请输入管理员信息："
+./user_manager.sh add
+# 建议使用真实的管理员邮箱和强密码
+
+# 添加其他必要的用户账户
+echo "添加其他用户账户..."
+# 根据实际需要添加用户
+
+# 验证用户数据
+echo "验证用户数据..."
+./user_manager.sh list
+
+cd ../..
+
+echo "✅ 生产环境用户数据初始化完成"
+echo ""
+echo "⚠️  重要提醒："
+echo "1. 请确保所有密码都是强密码"
+echo "2. 请妥善保管管理员账户信息"
+echo "3. 建议定期更新密码"
+echo "4. 生产环境用户数据已加密存储在COS中"
+```
+
+**安全注意事项**:
+- 生产环境用户密码必须使用强密码
+- 管理员账户信息需要妥善保管
+- 建议启用多因素认证（如果支持）
+- 定期审查和更新用户权限
 
 ## 🎨 生产前端部署
 
@@ -837,6 +893,8 @@ echo "监控检查完成"
 
 - [ ] 生产基础设施部署成功
 - [ ] 安全策略配置完成
+- [ ] 生产环境用户数据初始化完成
+- [ ] 管理员账户创建并测试
 - [ ] 前端生产构建并部署
 - [ ] CDN配置完成
 - [ ] 后端生产镜像构建
@@ -844,10 +902,13 @@ echo "监控检查完成"
 - [ ] API网关生产配置完成
 - [ ] 自定义域名配置完成
 - [ ] SSL证书配置完成
+- [ ] 身份验证系统正常工作
+- [ ] 用户登录功能测试通过
 - [ ] 监控和告警配置完成
 - [ ] 日志收集配置完成
 - [ ] 生产环境测试通过
 - [ ] 性能指标满足要求
+- [ ] 安全审计通过
 
 ## 📊 生产环境信息
 

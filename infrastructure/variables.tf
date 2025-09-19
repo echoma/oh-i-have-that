@@ -34,8 +34,33 @@ variable "common_tags" {
 }
 
 # COS相关变量
+variable "cos_static_bucket_name" {
+  description = "COS静态资源存储桶名称"
+  type        = string
+  default     = ""
+}
+
+variable "cos_data_bucket_name" {
+  description = "COS数据存储桶名称"
+  type        = string
+  default     = ""
+}
+
+variable "backend_allowed_origins" {
+  description = "允许访问数据桶的后端应用域名"
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "backend_service_principals" {
+  description = "允许访问数据桶的后端服务主体"
+  type        = list(string)
+  default     = ["qcs::cam::anyone:anyone"]
+}
+
+# 兼容性变量（保持向后兼容）
 variable "cos_bucket_name" {
-  description = "COS存储桶名称"
+  description = "COS存储桶名称（兼容性变量，映射到静态资源桶）"
   type        = string
   default     = ""
 }
@@ -78,3 +103,9 @@ variable "scf_timeout" {
   default     = 30
 }
 
+# TCR相关变量
+variable "enable_tcr" {
+  description = "是否启用TCR容器注册表功能"
+  type        = bool
+  default     = false
+}

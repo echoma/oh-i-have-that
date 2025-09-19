@@ -14,7 +14,7 @@ output "build_status" {
   value = {
     for app_name in var.app_names : app_name => {
       built  = null_resource.build_images[app_name].id != null
-      pushed = null_resource.push_images[app_name].id != null
+      pushed = var.enable_tcr ? (contains(keys(null_resource.push_images), app_name) ? null_resource.push_images[app_name].id != null : false) : false
     }
   }
 }

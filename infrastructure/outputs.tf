@@ -1,11 +1,39 @@
 # 输出值定义
+# 静态资源桶输出
+output "cos_static_bucket_url" {
+  description = "COS静态资源存储桶访问URL"
+  value       = module.cos.static_bucket_url
+}
+
+output "cos_static_bucket_name" {
+  description = "COS静态资源存储桶名称"
+  value       = module.cos.static_bucket_name
+}
+
+output "website_endpoint" {
+  description = "静态网站访问端点"
+  value       = module.cos.website_endpoint
+}
+
+# 数据存储桶输出
+output "cos_data_bucket_url" {
+  description = "COS数据存储桶访问URL"
+  value       = module.cos.data_bucket_url
+}
+
+output "cos_data_bucket_name" {
+  description = "COS数据存储桶名称"
+  value       = module.cos.data_bucket_name
+}
+
+# 兼容性输出（保持向后兼容）
 output "cos_bucket_url" {
-  description = "COS存储桶访问URL"
+  description = "COS存储桶访问URL（兼容性输出，指向静态资源桶）"
   value       = module.cos.bucket_url
 }
 
 output "cos_bucket_name" {
-  description = "COS存储桶名称"
+  description = "COS存储桶名称（兼容性输出，指向静态资源桶）"
   value       = module.cos.bucket_name
 }
 

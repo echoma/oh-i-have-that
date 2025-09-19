@@ -24,11 +24,16 @@ module "cos" {
   environment  = var.environment
   region      = var.region
   
-  # 静态网站配置
-  bucket_name         = var.cos_bucket_name
-  static_files_path   = var.static_files_path
-  enable_auto_upload  = var.enable_auto_upload
-  app_id             = var.app_id
+  # 双桶配置
+  static_bucket_name      = var.cos_static_bucket_name
+  data_bucket_name        = var.cos_data_bucket_name
+  static_files_path       = var.static_files_path
+  enable_auto_upload      = var.enable_auto_upload
+  app_id                  = var.app_id
+  
+  # 后端访问配置
+  backend_allowed_origins    = var.backend_allowed_origins
+  backend_service_principals = var.backend_service_principals
   
   tags = var.common_tags
 }
@@ -58,6 +63,7 @@ module "docker" {
   app_names    = var.app_names
   registry_url = module.container_registry.registry_url
   image_uris   = module.container_registry.image_uris
+  enable_tcr   = var.enable_tcr
   
   tags = var.common_tags
   

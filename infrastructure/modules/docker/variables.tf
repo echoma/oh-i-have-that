@@ -23,7 +23,7 @@ variable "app_names" {
 variable "apps_path" {
   description = "应用代码路径"
   type        = string
-  default     = "../../apps"
+  default     = "../backend"
 }
 
 variable "registry_url" {
@@ -53,4 +53,10 @@ variable "tags" {
   description = "资源标签"
   type        = map(string)
   default     = {}
+}
+
+variable "enable_tcr" {
+  description = "是否启用TCR容器注册表功能"
+  type        = bool
+  default     = false
 }

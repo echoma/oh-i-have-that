@@ -12,8 +12,10 @@ terraform {
   }
 }
 
-# 获取当前用户信息
-data "tencentcloud_user_info" "current" {}
+# 获取当前用户信息（仅在启用TCR时）
+data "tencentcloud_user_info" "current" {
+  count = var.enable_tcr ? 1 : 0
+}
 
 # 为每个应用构建Docker镜像
 resource "null_resource" "build_images" {
@@ -34,9 +36,9 @@ resource "null_resource" "build_images" {
   }
 }
 
-# 推送镜像到TCR
+# 推送镜像到TCR（仅在启用TCR时）
 resource "null_resource" "push_images" {
-  for_each = toset(var.app_names)
+  for_each = var.enable_tcr ? toset(var.app_names) : []
   
   triggers = {
     build_trigger = null_resource.build_images[each.value].id
@@ -45,7 +47,7 @@ resource "null_resource" "push_images" {
   provisioner "local-exec" {
     command = <<-EOT
       # 登录到TCR
-      docker login --username=${data.tencentcloud_user_info.current.app_id} --password-stdin ${var.registry_url} <<< "${var.tcr_token}"
+      docker login --username=${data.tencentcloud_user_info.current[0].app_id} --password-stdin ${var.registry_url} <<< "${var.tcr_token}"
       
       # 推送镜像
       docker push ${var.image_uris[each.value]}

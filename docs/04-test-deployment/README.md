@@ -15,6 +15,7 @@
 - 前端构建完成
 - 后端镜像制作完成
 - 基础设施部署成功
+- 测试环境COS访问凭证已配置
 
 ## 🚀 自动化部署（推荐）
 
@@ -54,6 +55,10 @@
 ```bash
 export TENCENTCLOUD_SECRET_ID="your-secret-id"
 export TENCENTCLOUD_SECRET_KEY="your-secret-key"
+export COS_DATA_BUCKET="your-test-data-bucket"
+export COS_REGION="ap-guangzhou"
+export COS_SECRET_ID="your-secret-id"
+export COS_SECRET_KEY="your-secret-key"
 ```
 
 #### legacy-deploy.sh - 旧版部署脚本
@@ -151,6 +156,56 @@ echo "🌐 配置COS静态网站托管..."
 
 echo "✅ 前端部署完成"
 echo "访问地址: $COS_BUCKET_URL"
+```
+
+## 👥 用户数据初始化
+
+在部署后端服务前，需要初始化测试环境的用户数据：
+
+```bash
+echo "👥 初始化测试环境用户数据..."
+
+# 进入用户管理工具目录
+cd tools/user-manager
+
+# 设置测试环境变量
+export COS_DATA_BUCKET="your-test-data-bucket"
+export COS_REGION="ap-guangzhou"
+export COS_SECRET_ID="$TENCENTCLOUD_SECRET_ID"
+export COS_SECRET_KEY="$TENCENTCLOUD_SECRET_KEY"
+
+# 初始化用户数据文件
+./user_manager.sh init
+
+# 添加测试管理员账户
+echo "添加测试管理员账户..."
+./user_manager.sh add << EOF
+admin@test.example.com
+测试管理员
+admin
+admin123
+EOF
+
+# 添加测试普通用户
+echo "添加测试用户账户..."
+./user_manager.sh add << EOF
+user@test.example.com
+测试用户
+user
+user123
+EOF
+
+# 验证用户数据
+echo "验证用户数据..."
+./user_manager.sh list
+
+cd ../..
+
+echo "✅ 测试环境用户数据初始化完成"
+echo ""
+echo "测试账户信息："
+echo "管理员: admin@test.example.com / admin123"
+echo "普通用户: user@test.example.com / user123"
 ```
 
 ## ⚡ 后端服务部署
@@ -603,12 +658,15 @@ done
 - [ ] 前端文件成功上传到COS
 - [ ] COS静态网站托管配置完成
 - [ ] 前端页面可正常访问
+- [ ] 测试环境用户数据初始化完成
+- [ ] 测试账户可正常登录
 - [ ] website-api云函数部署成功
 - [ ] user-service云函数部署成功
 - [ ] notification-service云函数部署成功
 - [ ] API网关配置完成
 - [ ] API路由正确配置
 - [ ] 所有API端点可正常访问
+- [ ] 身份验证功能正常工作
 - [ ] 端到端测试通过
 - [ ] 性能测试满足要求
 

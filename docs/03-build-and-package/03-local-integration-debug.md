@@ -74,13 +74,59 @@ USER_SERVICE_PORT=8081
 NOTIFICATION_SERVICE_PORT=8082
 WEBSITE_API_PORT=8080
 
+# COS配置（用于用户数据存储）
+COS_DATA_BUCKET=your-test-data-bucket
+COS_REGION=ap-guangzhou
+COS_SECRET_ID=your-secret-id
+COS_SECRET_KEY=your-secret-key
+
 # 调试模式
 DEBUG=true
 LOG_LEVEL=debug
 EOF
 ```
 
-### 3. 启动后端服务
+### 3. 初始化用户数据
+
+在本地调试前，需要初始化用户数据：
+
+```bash
+# 进入用户管理工具目录
+cd tools/user-manager
+
+# 设置环境变量（使用测试环境的COS配置）
+export COS_DATA_BUCKET="your-test-data-bucket"
+export COS_REGION="ap-guangzhou"
+export COS_SECRET_ID="your-secret-id"
+export COS_SECRET_KEY="your-secret-key"
+
+# 初始化用户数据文件
+./user_manager.sh init
+
+# 添加测试用户
+./user_manager.sh add
+# 按提示输入：
+# 邮箱: admin@test.com
+# 姓名: 测试管理员
+# 角色: admin
+# 密码: test123
+
+# 添加更多测试用户
+./user_manager.sh add
+# 邮箱: user@test.com
+# 姓名: 测试用户
+# 角色: user
+# 密码: user123
+
+# 验证用户数据
+./user_manager.sh list
+
+cd ../..
+```
+
+**注意**: 用户管理工具的详细使用说明请参考 `tools/user-manager/README.md`
+
+### 4. 启动后端服务
 
 #### 方式一：手动启动各服务
 ```bash
@@ -133,7 +179,7 @@ chmod +x start-local-backend.sh
 ./start-local-backend.sh
 ```
 
-### 4. 启动前端服务
+### 5. 启动前端服务
 
 ```bash
 cd frontend

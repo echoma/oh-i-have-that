@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -57,15 +58,12 @@ type APIGatewayResponse struct {
 type User struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`
-	Password string `json:"password"` // 实际应用中应该是加密后的密码
-	Username string `json:"username"`
-	Status   string `json:"status"`
-}
-
-// UserDatabase 用户数据库结构（存储在COS中）
-type UserDatabase struct {
-	Users     map[string]User `json:"users"`
-	UpdatedAt time.Time       `json:"updatedAt"`
+	Password string `json:"password"` // SHA256 哈希值
+	Role     string `json:"role"`
+	Name     string `json:"name"`
+	Active   bool   `json:"active"`
+	Created  string `json:"created"`
+	Updated  string `json:"updated"`
 }
 
 // LoginRequest 登录请求
@@ -98,128 +96,103 @@ type AuthCheckResponse struct {
 // COS客户端
 var cosClient *cos.Client
 
-// 初始化用户数据（存储在COS中的默认数据）
-var defaultUsers = UserDatabase{
-	Users: map[string]User{
-		"user001": {
-			ID:       "user001",
-			Email:    "admin@example.com",
-			Password: "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8", // "password" 的SHA256
-			Username: "管理员",
-			Status:   "active",
-		},
-		"user002": {
-			ID:       "user002",
-			Email:    "zhangsan@example.com",
-			Password: "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f", // "secret123" 的SHA256
-			Username: "张三",
-			Status:   "active",
-		},
-		"user003": {
-			ID:       "user003",
-			Email:    "lisi@example.com",
-			Password: "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b", // "hello456" 的SHA256
-			Username: "李四",
-			Status:   "active",
-		},
-	},
-	UpdatedAt: time.Now(),
-}
-
 // 初始化COS客户端
 func initCOSClient() {
 	// 从环境变量获取COS配置
 	secretID := os.Getenv("COS_SECRET_ID")
 	secretKey := os.Getenv("COS_SECRET_KEY")
 	region := os.Getenv("COS_REGION")
-	bucketName := os.Getenv("COS_BUCKET_NAME")
+	bucketName := os.Getenv("COS_DATA_BUCKET")
 
 	if secretID == "" || secretKey == "" || region == "" || bucketName == "" {
-		log.Println("警告: COS配置不完整，使用模拟数据")
+		log.Println("警告: COS配置不完整，将使用本地用户文件作为回退")
 		return
 	}
 
-	bucketURL := fmt.Sprintf("https://%s.cos.%s.myqcloud.com", bucketName, region)
-	serviceURL := fmt.Sprintf("https://cos.%s.myqcloud.com", region)
+	u, _ := url.Parse(fmt.Sprintf("https://%s.cos.%s.myqcloud.com", bucketName, region))
+	b := &cos.BaseURL{BucketURL: u}
 
-	b, _ := cos.NewBaseURL(bucketURL)
-	s, _ := cos.NewBaseURL(serviceURL)
-
-	cosClient = cos.NewClient(&cos.BaseURL{
-		BucketURL:  b,
-		ServiceURL: s,
-	}, &http.Client{
+	cosClient = cos.NewClient(b, &http.Client{
 		Transport: &cos.AuthorizationTransport{
 			SecretID:  secretID,
 			SecretKey: secretKey,
 		},
 	})
+
+	log.Println("COS客户端初始化成功")
 }
 
 // 从COS加载用户数据
-func loadUsersFromCOS() (*UserDatabase, error) {
+func loadUsersFromCOS() ([]User, error) {
 	if cosClient == nil {
-		// 如果COS客户端未初始化，返回默认数据
-		return &defaultUsers, nil
+		// 如果COS客户端未初始化，使用本地文件作为回退
+		log.Println("COS客户端未初始化，使用本地用户文件")
+		return loadUsersFromLocal()
 	}
 
-	resp, err := cosClient.Object.Get(context.Background(), "data/users.json", nil)
+	resp, err := cosClient.Object.Get(context.Background(), "auth/users.json", nil)
 	if err != nil {
-		// 如果文件不存在，创建默认数据
-		log.Printf("用户数据文件不存在，创建默认数据: %v", err)
-		err = saveUsersToCOS(&defaultUsers)
-		if err != nil {
-			log.Printf("保存默认用户数据失败: %v", err)
+		// 如果文件不存在，使用本地文件作为回退
+		if strings.Contains(err.Error(), "NoSuchKey") {
+			log.Println("COS中用户文件不存在，使用本地用户文件")
+			return loadUsersFromLocal()
 		}
-		return &defaultUsers, nil
+		return nil, fmt.Errorf("从COS读取用户文件失败: %v", err)
 	}
 	defer resp.Body.Close()
 
-	var userDB UserDatabase
-	err = json.NewDecoder(resp.Body).Decode(&userDB)
-	if err != nil {
-		log.Printf("解析用户数据失败: %v", err)
-		return &defaultUsers, nil
+	var users []User
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("解析用户数据失败: %v", err)
 	}
 
-	return &userDB, nil
+	log.Printf("从COS加载了 %d 个用户", len(users))
+	return users, nil
 }
 
-// 保存用户数据到COS
-func saveUsersToCOS(userDB *UserDatabase) error {
-	if cosClient == nil {
-		return fmt.Errorf("COS客户端未初始化")
-	}
-
-	userDB.UpdatedAt = time.Now()
-	data, err := json.MarshalIndent(userDB, "", "  ")
+// 从本地文件加载用户数据（回退方案）
+func loadUsersFromLocal() ([]User, error) {
+	data, err := os.ReadFile("users.json")
 	if err != nil {
-		return err
+		log.Printf("读取本地用户文件失败: %v", err)
+		return []User{}, nil // 返回空用户列表而不是错误
 	}
 
-	_, err = cosClient.Object.Put(context.Background(), "data/users.json", strings.NewReader(string(data)), nil)
-	return err
+	var users []User
+	if err := json.Unmarshal(data, &users); err != nil {
+		log.Printf("解析本地用户文件失败: %v", err)
+		return []User{}, nil
+	}
+
+	log.Printf("从本地文件加载了 %d 个用户", len(users))
+	return users, nil
+}
+
+// 对密码进行SHA256哈希
+func hashPassword(password string) string {
+	hash := sha256.Sum256([]byte(password))
+	return fmt.Sprintf("%x", hash)
 }
 
 // 生成简单的token（实际应用中应使用JWT）
 func generateToken(userID string) string {
 	timestamp := time.Now().Unix()
-	data := fmt.Sprintf("%s:%d", userID, timestamp)
-	hash := md5.Sum([]byte(data))
+	data := fmt.Sprintf("%s:%d:%s", userID, timestamp, os.Getenv("JWT_SECRET"))
+	hash := sha256.Sum256([]byte(data))
 	return fmt.Sprintf("%x", hash)
 }
 
 // 验证token（简单实现，实际应用中应使用JWT验证）
-func validateToken(token string, userDB *UserDatabase) (string, bool) {
+func validateToken(token string, users []User) (*User, bool) {
 	// 这里是简化的token验证逻辑
 	// 实际应用中应该使用JWT或其他安全的token机制
-	for userID := range userDB.Users {
-		expectedToken := generateToken(userID)
+	for _, user := range users {
+		expectedToken := generateToken(user.ID)
 		if token == expectedToken {
-			return userID, true
+			return &user, true
 		}
 	}
-	return "", false
+	return nil, false
 }
 
 // 设置Gin路由
@@ -244,7 +217,7 @@ func setupRouter() *gin.Engine {
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Auth Service API",
-			"version": "1.0.0",
+			"version": "2.0.0",
 			"service": "auth-service",
 			"time":    time.Now().Format(time.RFC3339),
 		})
@@ -272,10 +245,20 @@ func corsMiddleware() gin.HandlerFunc {
 
 // 健康检查
 func healthCheck(c *gin.Context) {
+	users, err := loadUsersFromCOS()
+	userCount := len(users)
+
+	status := "healthy"
+	if err != nil {
+		status = "degraded"
+	}
+
 	c.JSON(200, gin.H{
-		"status":  "healthy",
-		"service": "auth-service",
-		"time":    time.Now().Format(time.RFC3339),
+		"status":     status,
+		"service":    "auth-service",
+		"time":       time.Now().Format(time.RFC3339),
+		"userCount":  userCount,
+		"cosEnabled": cosClient != nil,
 	})
 }
 
@@ -291,7 +274,7 @@ func login(c *gin.Context) {
 	}
 
 	// 加载用户数据
-	userDB, err := loadUsersFromCOS()
+	users, err := loadUsersFromCOS()
 	if err != nil {
 		c.JSON(500, LoginResponse{
 			Success: false,
@@ -302,7 +285,7 @@ func login(c *gin.Context) {
 
 	// 查找用户
 	var foundUser *User
-	for _, user := range userDB.Users {
+	for _, user := range users {
 		if user.Email == req.Email {
 			foundUser = &user
 			break
@@ -317,9 +300,9 @@ func login(c *gin.Context) {
 		return
 	}
 
-	// 验证密码（这里应该使用安全的密码验证）
-	// 简化实现：直接比较（实际应用中应该比较哈希值）
-	if foundUser.Password != req.Password {
+	// 验证密码（比较SHA256哈希值）
+	hashedPassword := hashPassword(req.Password)
+	if foundUser.Password != hashedPassword {
 		c.JSON(401, LoginResponse{
 			Success: false,
 			Message: "邮箱或密码错误",
@@ -328,7 +311,7 @@ func login(c *gin.Context) {
 	}
 
 	// 检查用户状态
-	if foundUser.Status != "active" {
+	if !foundUser.Active {
 		c.JSON(401, LoginResponse{
 			Success: false,
 			Message: "账户已被禁用",
@@ -346,7 +329,7 @@ func login(c *gin.Context) {
 		Success:  true,
 		Message:  "登录成功",
 		Token:    token,
-		Username: foundUser.Username,
+		Username: foundUser.Name,
 		UserID:   foundUser.ID,
 	})
 }
@@ -373,7 +356,7 @@ func checkAuth(c *gin.Context) {
 	}
 
 	// 加载用户数据
-	userDB, err := loadUsersFromCOS()
+	users, err := loadUsersFromCOS()
 	if err != nil {
 		c.JSON(500, AuthCheckResponse{
 			Valid: false,
@@ -382,16 +365,15 @@ func checkAuth(c *gin.Context) {
 	}
 
 	// 验证token
-	userID, valid := validateToken(token, userDB)
-	if !valid {
+	user, valid := validateToken(token, users)
+	if !valid || user == nil {
 		c.JSON(401, AuthCheckResponse{
 			Valid: false,
 		})
 		return
 	}
 
-	user, exists := userDB.Users[userID]
-	if !exists || user.Status != "active" {
+	if !user.Active {
 		c.JSON(401, AuthCheckResponse{
 			Valid: false,
 		})
@@ -400,7 +382,7 @@ func checkAuth(c *gin.Context) {
 
 	c.JSON(200, AuthCheckResponse{
 		Valid:    true,
-		Username: user.Username,
+		Username: user.Name,
 		UserID:   user.ID,
 	})
 }
