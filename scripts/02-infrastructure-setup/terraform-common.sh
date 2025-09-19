@@ -198,7 +198,7 @@ terraform_validate() {
 terraform_plan() {
     local env=$1
     local target=$2
-    local out_file=${3:-"tfplan-$env"}
+    local out_file=${3:-"$env.tfplan"}
     
     log_info "生成部署计划..."
     

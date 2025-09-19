@@ -105,7 +105,7 @@ plan_deployment() {
         exit 1
     fi
     
-    terraform plan -var-file="$var_file" -out=tfplan
+    terraform plan -var-file="$var_file" -out=test.tfplan
     
     log_success "部署计划生成完成"
 }
@@ -114,7 +114,7 @@ plan_deployment() {
 apply_deployment() {
     log_info "开始部署..."
     
-    terraform apply tfplan
+    terraform apply test.tfplan
     
     log_success "部署完成"
 }

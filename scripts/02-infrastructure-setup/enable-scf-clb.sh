@@ -320,7 +320,7 @@ if terraform_plan "$ENVIRONMENT"; then
     log_success "执行计划生成完成"
     echo ""
     log_info "请检查执行计划，确认无误后运行以下命令部署："
-    echo "terraform apply tfplan-$ENVIRONMENT"
+    echo "terraform apply $ENVIRONMENT.tfplan"
     echo ""
     log_info "或者使用脚本："
     echo "../scripts/02-infrastructure-setup/workspace.sh apply $ENVIRONMENT"

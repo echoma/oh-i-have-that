@@ -44,14 +44,14 @@ staged_deployment() {
         log_info "部署阶段: $stage"
         
         # 生成计划
-        if ! terraform_plan "$env" "module.$stage" "tfplan-$stage"; then
+        if ! terraform_plan "$env" "module.$stage" "$stage.tfplan"; then
             log_error "阶段 $stage 计划生成失败"
             return 1
         fi
         
         # 执行部署
         if [[ "$auto_approve" == "true" ]]; then
-            if terraform_apply "tfplan-$stage" true; then
+            if terraform_apply "$stage.tfplan" true; then
                 log_success "$stage 模块部署完成"
             else
                 log_error "$stage 模块部署失败"
@@ -61,7 +61,7 @@ staged_deployment() {
             echo "准备部署 $stage 模块..."
             read -p "继续？(y/N): " confirm
             if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                if terraform_apply "tfplan-$stage" false; then
+                if terraform_apply "$stage.tfplan" false; then
                     log_success "$stage 模块部署完成"
                 else
                     log_error "$stage 模块部署失败"
@@ -201,13 +201,13 @@ main() {
     else
         # 标准部署流程
         # 生成计划
-        if ! terraform_plan "$environment" "$target"; then
+        if ! terraform_plan "$environment" "$target" "$environment.tfplan"; then
             exit 1
         fi
         
         # 执行部署（如果不是仅计划模式）
         if [[ "$plan_only" == "false" ]]; then
-            if terraform_apply "tfplan-$environment" "$auto_approve"; then
+            if terraform_apply "$environment.tfplan" "$auto_approve"; then
                 terraform_show_outputs
             else
                 exit 1
